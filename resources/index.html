@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<script src="https://unpkg.com/htmx.org@1.9.10"></script>
+<html>
+
+<body>
+	<h1>Truffle</h1>
+	<button hx-post="/dashboard" hx-trigger="click" hx-target="#main-div">Dashboard</button>
+	<button hx-post="/settings" hx-trigger="click" hx-target="#main-div">Settings</button>
+
+	<div id="main-div">
+	</div>
+</body>
+
+</html>
