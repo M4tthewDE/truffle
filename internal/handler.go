@@ -1,34 +1,9 @@
-package main
+package internal
 
 import (
-	"html/template"
-	"log"
 	"net/http"
+	"text/template"
 )
-
-func main() {
-	rootHandler, err := NewRootHandler()
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	dashboardHandler, err := NewDashboardHandler()
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	settingsHandler, err := NewSettingsHandler()
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	http.Handle("/", rootHandler)
-	http.Handle("/dashboard", dashboardHandler)
-	http.Handle("/settings", settingsHandler)
-
-	log.Println("Starting server on port 8080")
-	http.ListenAndServe(":8080", nil)
-}
 
 type RootHandler struct {
 	indexTemplate *template.Template
