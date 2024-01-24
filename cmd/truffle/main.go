@@ -25,9 +25,15 @@ func main() {
 		log.Fatalln(err)
 	}
 
+	loginHandler, err := internal.NewLoginHandler()
+	if err != nil {
+		log.Fatalln(err)
+	}
+
 	http.Handle("/", rootHandler)
 	http.Handle("/dashboard", dashboardHandler)
 	http.Handle("/settings", settingsHandler)
+	http.Handle("/login", loginHandler)
 
 	log.Println("Starting server on port 8080")
 	http.ListenAndServe(":8080", nil)
