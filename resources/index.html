@@ -4,11 +4,19 @@
 
 <body>
 	<h1>Truffle</h1>
+
+	{{if not .loggedIn}}
+	<!--TODO: implement login logic-->
+	<button>Login</button>
+	{{else}}
+	<hr>
+	<!--TODO: build a special type of handler that requires authentication!-->
 	<button hx-post="/dashboard" hx-trigger="click" hx-target="#main-div">Dashboard</button>
 	<button hx-post="/settings" hx-trigger="click" hx-target="#main-div">Settings</button>
 
 	<div id="main-div">
 	</div>
+	{{end}}
 </body>
 
 </html>
