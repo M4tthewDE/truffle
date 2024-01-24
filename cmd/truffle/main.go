@@ -1,12 +1,15 @@
 package main
 
 import (
+	"github.com/joho/godotenv"
 	"github.com/m4tthewde/truffle/internal"
 	"log"
 	"net/http"
 )
 
 func main() {
+	godotenv.Load()
+
 	rootHandler, err := internal.NewRootHandler()
 	if err != nil {
 		log.Fatalln(err)

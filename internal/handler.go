@@ -1,7 +1,9 @@
 package internal
 
 import (
+	"log"
 	"net/http"
+	"os"
 	"text/template"
 )
 
@@ -18,10 +20,19 @@ func NewRootHandler() (*RootHandler, error) {
 	return &RootHandler{indexTemplate: indexTemplate}, nil
 }
 
+type RootData struct {
+	LoggedIn bool
+	ClientId string
+}
+
 func (handler *RootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	err := handler.indexTemplate.Execute(w, nil)
+	rootData := RootData{
+		LoggedIn: false,
+		ClientId: os.Getenv("CLIENT_ID"),
+	}
+	err := handler.indexTemplate.Execute(w, rootData)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		log.Fatalln(err)
 	}
 }
 
