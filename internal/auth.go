@@ -14,6 +14,7 @@ import (
 )
 
 var (
+	// TODO: expire sessions after a week (like cookies)
 	Sessions map[uuid.UUID]int
 )
 

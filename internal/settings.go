@@ -24,7 +24,19 @@ func (handler *SettingsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	err := handler.settingsTemplate.Execute(w, nil)
+	sessionId, err := sessionIdFromRequest(r)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	} else {
+		_, loggedIn := Sessions[*sessionId]
+		if !loggedIn {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+	}
+
+	err = handler.settingsTemplate.Execute(w, nil)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
