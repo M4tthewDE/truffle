@@ -13,6 +13,10 @@ import (
 	"github.com/google/uuid"
 )
 
+var (
+	Sessions map[uuid.UUID]int
+)
+
 type LoginHandler struct {
 }
 
@@ -48,11 +52,7 @@ func (handler *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sessionId := uuid.New()
-	log.Println(user)
-	log.Println(sessionId)
-
-	// TODO: save sessionId and userinformation in sqlite db
-
+	Sessions[sessionId] = user.Id
 	http.Redirect(w, r, "http://localhost:8080/#"+sessionId.String(), http.StatusFound)
 }
 

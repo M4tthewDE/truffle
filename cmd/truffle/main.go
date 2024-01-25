@@ -1,14 +1,18 @@
 package main
 
 import (
-	"github.com/joho/godotenv"
-	"github.com/m4tthewde/truffle/internal"
 	"log"
 	"net/http"
+
+	"github.com/google/uuid"
+	"github.com/joho/godotenv"
+	"github.com/m4tthewde/truffle/internal"
 )
 
 func main() {
 	godotenv.Load()
+
+	internal.Sessions = make(map[uuid.UUID]int)
 
 	rootHandler, err := internal.NewRootHandler()
 	if err != nil {
