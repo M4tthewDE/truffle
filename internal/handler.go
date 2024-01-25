@@ -3,13 +3,15 @@ package internal
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"text/template"
+
+	"github.com/google/uuid"
 )
 
 type RootHandler struct {
@@ -31,6 +33,7 @@ type RootData struct {
 }
 
 func (handler *RootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// TODO: get logged in status from db using sessionid from request
 	rootData := RootData{
 		LoggedIn: false,
 		ClientId: os.Getenv("CLIENT_ID"),
@@ -106,33 +109,112 @@ func (handler *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	params, err := url.ParseQuery(r.URL.RawQuery)
 	if err != nil {
+		log.Println(err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
+	login, err := getLogin(params.Get("code"))
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	user, err := getUser(login.AccessToken)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	sessionId := uuid.New()
+	log.Println(user)
+	log.Println(sessionId)
+
+	// TODO: save sessionId and userinformation in sqlite db
+
+	http.Redirect(w, r, "http://localhost:8080/#"+sessionId.String(), http.StatusFound)
+}
+
+type LoginResponse struct {
+	AccessToken string `json:"access_token"`
+}
+
+func getLogin(code string) (*LoginResponse, error) {
 	body := make(map[string]string)
 	body["client_id"] = os.Getenv("CLIENT_ID")
 	body["client_secret"] = os.Getenv("CLIENT_SECRET")
-	body["code"] = params.Get("code")
+	body["code"] = code
 
 	jsonStr, err := json.Marshal(body)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return nil, err
 	}
 
-	resp, err := http.Post("https://github.com/login/oauth/access_token", "application/json", bytes.NewBuffer(jsonStr))
-	if resp.StatusCode != 200 {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	responseBody, err := io.ReadAll(resp.Body)
+	req, err := http.NewRequest("POST", "https://github.com/login/oauth/access_token", bytes.NewBuffer(jsonStr))
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return nil, err
 	}
 
-	// TODO: parse body properly
-	fmt.Fprintf(w, string(responseBody))
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != 200 {
+		return nil, errors.New(resp.Status)
+	}
+
+	var loginResponse LoginResponse
+	err = json.NewDecoder(resp.Body).Decode(&loginResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	return &loginResponse, nil
+}
+
+type UserResponse struct {
+	Login string `json:"login"`
+	Id    int    `json:"id"`
+}
+
+func getUser(accessToken string) (*UserResponse, error) {
+	body := make(map[string]string)
+	body["access_token"] = accessToken
+
+	jsonBody, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", "https://api.github.com/user", bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != 200 {
+		return nil, errors.New(resp.Status)
+	}
+
+	var userInfo UserResponse
+	err = json.NewDecoder(resp.Body).Decode(&userInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userInfo, nil
 }
