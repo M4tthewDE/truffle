@@ -33,7 +33,7 @@
 			var expires = "expires=" + expiryDate.toUTCString();
 			document.cookie = "sessionid=" + fragment + ";" + expires + ";path=/;SameSite=Strict";
 
-			history.pushState("", document.title, window.location.pathname + window.location.search);
+			window.location.href = "/"
 		}
 	}
 
