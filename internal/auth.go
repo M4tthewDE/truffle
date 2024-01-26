@@ -12,9 +12,15 @@ import (
 	"github.com/google/uuid"
 )
 
+type UserInfo struct {
+	AccessToken string
+	Login       string
+	UserId      string
+}
+
 var (
 	// TODO: expire sessions after a week (like cookies)
-	Sessions map[uuid.UUID]string
+	Sessions map[uuid.UUID]UserInfo
 )
 
 type LoginHandler struct {
@@ -52,7 +58,11 @@ func (handler *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sessionId := uuid.New()
-	Sessions[sessionId] = validation.UserId
+	Sessions[sessionId] = UserInfo{
+		AccessToken: login.AccessToken,
+		Login:       validation.Login,
+		UserId:      validation.UserId,
+	}
 	http.Redirect(w, r, "http://localhost:8080/#"+sessionId.String(), http.StatusFound)
 }
 
@@ -101,6 +111,7 @@ func getToken(code string) (*TokenResponse, error) {
 
 type ValidationResponse struct {
 	UserId string `json:"user_id"`
+	Login  string `json:"login"`
 }
 
 func validateToken(accessToken string) (*ValidationResponse, error) {

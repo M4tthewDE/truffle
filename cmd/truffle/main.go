@@ -15,7 +15,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	internal.Sessions = make(map[uuid.UUID]string)
+	internal.Sessions = make(map[uuid.UUID]internal.UserInfo)
 
 	rootHandler, err := internal.NewRootHandler()
 	if err != nil {
@@ -23,6 +23,11 @@ func main() {
 	}
 
 	dashboardHandler, err := internal.NewDashboardHandler()
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	chatHandler, err := internal.NewChatHandler()
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -39,6 +44,7 @@ func main() {
 
 	http.Handle("/", rootHandler)
 	http.Handle("/dashboard", dashboardHandler)
+	http.Handle("/chat", chatHandler)
 	http.Handle("/settings", settingsHandler)
 	http.Handle("/login", loginHandler)
 
