@@ -16,7 +16,7 @@ func main() {
 	}
 
 	internal.Sessions = make(map[uuid.UUID]internal.UserInfo)
-	internal.MsgChans = make(map[uuid.UUID]chan internal.Message)
+	internal.MsgChans = make(map[string][]chan internal.Message)
 
 	rootHandler, err := internal.NewRootHandler()
 	if err != nil {

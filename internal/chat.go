@@ -11,13 +11,12 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
 var (
-	// TODO: use a uuid instead of string
-	MsgChans map[uuid.UUID]chan Message
+	// FIXME: when do these get cleaned up?
+	MsgChans map[string][]chan Message
 )
 
 type ChatHandler struct {
@@ -55,10 +54,11 @@ func (handler *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	msgChan := make(chan Message)
-	MsgChans[*sessionId] = msgChan
-
-	go readChat(Sessions[*sessionId], msgChan)
+	userId := Sessions[*sessionId].UserId
+	_, alreadyConnect := MsgChans[userId]
+	if !alreadyConnect {
+		go readChat(Sessions[*sessionId])
+	}
 
 	err = handler.settingsTemplate.Execute(w, ChatData{SessionId: sessionId.String()})
 	if err != nil {
@@ -67,8 +67,7 @@ func (handler *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// TODO: cache connections per session
-func readChat(userInfo UserInfo, msgChan chan Message) {
+func readChat(userInfo UserInfo) {
 	u := url.URL{Scheme: "wss", Host: "eventsub.wss.twitch.tv", Path: "/ws"}
 	log.Println("Connecting to eventsub websocket")
 
@@ -84,7 +83,7 @@ func readChat(userInfo UserInfo, msgChan chan Message) {
 			log.Fatalln(err)
 		}
 
-		err = handleRawMessage(message, userInfo, msgChan)
+		err = handleRawMessage(message, userInfo)
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -121,7 +120,7 @@ type ChatMessage struct {
 	Text string `json:"text"`
 }
 
-func handleRawMessage(rawMsg []byte, userInfo UserInfo, msgChan chan Message) error {
+func handleRawMessage(rawMsg []byte, userInfo UserInfo) error {
 	var msg Message
 	err := json.Unmarshal(rawMsg, &msg)
 	if err != nil {
@@ -141,7 +140,9 @@ func handleRawMessage(rawMsg []byte, userInfo UserInfo, msgChan chan Message) er
 	}
 
 	if msg.Metadata.MessageType == "notification" {
-		msgChan <- msg
+		for _, msgChan := range MsgChans[userInfo.UserId] {
+			msgChan <- msg
+		}
 	}
 
 	return nil
@@ -223,7 +224,9 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}
 	defer c.Close()
 
-	msgChan := MsgChans[*sessionId]
+	userId := Sessions[*sessionId].UserId
+	msgChan := make(chan Message)
+	MsgChans[userId] = append(MsgChans[userId], msgChan)
 
 	for {
 		msg := <-msgChan
