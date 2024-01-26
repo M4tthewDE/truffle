@@ -10,6 +10,7 @@ import (
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
 	err := internal.LoadConfig()
 	if err != nil {
 		log.Fatalln(err)
