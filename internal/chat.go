@@ -11,7 +11,13 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+)
+
+var (
+	// TODO: use a uuid instead of string
+	MsgChans map[uuid.UUID]chan Message
 )
 
 type ChatHandler struct {
@@ -50,16 +56,9 @@ func (handler *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	msgChan := make(chan Message)
+	MsgChans[*sessionId] = msgChan
 
 	go readChat(Sessions[*sessionId], msgChan)
-
-	wsChatHandler, err := NewWsChatHandler(msgChan)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-	}
-
-	http.Handle("/chat/"+sessionId.String(), wsChatHandler)
 
 	err = handler.settingsTemplate.Execute(w, ChatData{SessionId: sessionId.String()})
 	if err != nil {
@@ -68,6 +67,7 @@ func (handler *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// TODO: cache connections per session
 func readChat(userInfo UserInfo, msgChan chan Message) {
 	u := url.URL{Scheme: "wss", Host: "eventsub.wss.twitch.tv", Path: "/ws"}
 	log.Println("Connecting to eventsub websocket")
@@ -141,7 +141,6 @@ func handleRawMessage(rawMsg []byte, userInfo UserInfo, msgChan chan Message) er
 	}
 
 	if msg.Metadata.MessageType == "notification" {
-		log.Println(msg)
 		msgChan <- msg
 	}
 
@@ -191,22 +190,32 @@ func createSub(userInfo UserInfo, sessionId string) error {
 }
 
 type WsChatHandler struct {
-	msgChan     chan Message
 	msgTemplate *template.Template
 }
 
-func NewWsChatHandler(msgChan chan Message) (*WsChatHandler, error) {
+func NewWsChatHandler() (*WsChatHandler, error) {
 	msgTemplate, err := template.ParseFiles("resources/message.html")
 	if err != nil {
 		return nil, err
 	}
-	return &WsChatHandler{msgChan: msgChan, msgTemplate: msgTemplate}, nil
+	return &WsChatHandler{msgTemplate: msgTemplate}, nil
 }
 
 var upgrader = websocket.Upgrader{}
 
 func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// FIXME: I don't think this runs! Creating handler on the fly probably a bad idea
+	sessionId, err := sessionIdFromRequest(r)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	} else {
+		_, loggedIn := Sessions[*sessionId]
+		if !loggedIn {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+	}
+
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
@@ -214,15 +223,15 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}
 	defer c.Close()
 
+	msgChan := MsgChans[*sessionId]
+
 	for {
-		msg := <-handler.msgChan
+		msg := <-msgChan
 		var templateBuffer bytes.Buffer
 		if handler.msgTemplate.Execute(&templateBuffer, msg); err != nil {
 			log.Println(err)
 			return
 		}
-
-		log.Println(templateBuffer.String())
 
 		if c.WriteMessage(websocket.TextMessage, templateBuffer.Bytes()); err != nil {
 			log.Println(err)

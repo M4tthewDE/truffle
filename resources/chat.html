@@ -1,6 +1,4 @@
-<script src="https://unpkg.com/htmx.org/dist/ext/ws.js"></script>
-
 <h2>Chat</h2>
-<div hx-ext="ws" ws-connect="/chat/{{.SessionId}}">
+<div hx-ext="ws" ws-connect="/chat/messages">
 	<div id="msg"></div>
 </div>
