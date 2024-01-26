@@ -27,6 +27,10 @@ func NewChatHandler() (*ChatHandler, error) {
 	return &ChatHandler{settingsTemplate: settingsTemplate}, nil
 }
 
+type ChatData struct {
+	SessionId string
+}
+
 func (handler *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		w.WriteHeader(http.StatusBadRequest)
@@ -45,16 +49,26 @@ func (handler *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	go readChat(Sessions[*sessionId])
-	go startWebsocket(sessionId)
+	msgChan := make(chan Message)
 
-	err = handler.settingsTemplate.Execute(w, nil)
+	go readChat(Sessions[*sessionId], msgChan)
+
+	wsChatHandler, err := NewWsChatHandler(msgChan)
 	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+
+	http.Handle("/chat/"+sessionId.String(), wsChatHandler)
+
+	err = handler.settingsTemplate.Execute(w, ChatData{SessionId: sessionId.String()})
+	if err != nil {
+		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 }
 
-func readChat(userInfo UserInfo) {
+func readChat(userInfo UserInfo, msgChan chan Message) {
 	u := url.URL{Scheme: "wss", Host: "eventsub.wss.twitch.tv", Path: "/ws"}
 	log.Println("Connecting to eventsub websocket")
 
@@ -70,7 +84,7 @@ func readChat(userInfo UserInfo) {
 			log.Fatalln(err)
 		}
 
-		err = handleRawMessage(message, userInfo)
+		err = handleRawMessage(message, userInfo, msgChan)
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -107,14 +121,12 @@ type ChatMessage struct {
 	Text string `json:"text"`
 }
 
-func handleRawMessage(rawMsg []byte, userInfo UserInfo) error {
+func handleRawMessage(rawMsg []byte, userInfo UserInfo, msgChan chan Message) error {
 	var msg Message
 	err := json.Unmarshal(rawMsg, &msg)
 	if err != nil {
 		return err
 	}
-
-	log.Println(msg)
 
 	if msg.Metadata.MessageType == "session_welcome" {
 		createSub(userInfo, msg.Payload.Session.Id)
@@ -129,7 +141,8 @@ func handleRawMessage(rawMsg []byte, userInfo UserInfo) error {
 	}
 
 	if msg.Metadata.MessageType == "notification" {
-		// TODO: send to frontend websocket
+		log.Println(msg)
+		msgChan <- msg
 	}
 
 	return nil
@@ -155,8 +168,6 @@ func createSub(userInfo UserInfo, sessionId string) error {
 		return err
 	}
 
-	log.Println(string(jsonStr))
-
 	req, err := http.NewRequest("POST", "https://api.twitch.tv/helix/eventsub/subscriptions", bytes.NewBuffer(jsonStr))
 	if err != nil {
 		return err
@@ -166,8 +177,6 @@ func createSub(userInfo UserInfo, sessionId string) error {
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Client-Id", Conf.ClientId)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", userInfo.AccessToken))
-
-	log.Println(req.Header)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -179,4 +188,45 @@ func createSub(userInfo UserInfo, sessionId string) error {
 	}
 
 	return nil
+}
+
+type WsChatHandler struct {
+	msgChan     chan Message
+	msgTemplate *template.Template
+}
+
+func NewWsChatHandler(msgChan chan Message) (*WsChatHandler, error) {
+	msgTemplate, err := template.ParseFiles("resources/message.html")
+	if err != nil {
+		return nil, err
+	}
+	return &WsChatHandler{msgChan: msgChan, msgTemplate: msgTemplate}, nil
+}
+
+var upgrader = websocket.Upgrader{}
+
+func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// FIXME: I don't think this runs! Creating handler on the fly probably a bad idea
+	c, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	defer c.Close()
+
+	for {
+		msg := <-handler.msgChan
+		var templateBuffer bytes.Buffer
+		if handler.msgTemplate.Execute(&templateBuffer, msg); err != nil {
+			log.Println(err)
+			return
+		}
+
+		log.Println(templateBuffer.String())
+
+		if c.WriteMessage(websocket.TextMessage, templateBuffer.Bytes()); err != nil {
+			log.Println(err)
+			return
+		}
+	}
 }
