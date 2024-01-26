@@ -6,7 +6,8 @@
 	<h1>Truffle</h1>
 
 	{{if not .LoggedIn}}
-	<a href="https://github.com/login/oauth/authorize?client_id={{.ClientId}}">
+	<a
+		href="https://id.twitch.tv/oauth2/authorize?response_type=code&client_id={{.ClientId}}&redirect_uri=http://localhost:8080/login&scope=">
 		Login
 	</a>
 	{{else}}

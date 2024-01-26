@@ -14,7 +14,7 @@ import (
 
 var (
 	// TODO: expire sessions after a week (like cookies)
-	Sessions map[uuid.UUID]int
+	Sessions map[uuid.UUID]string
 )
 
 type LoginHandler struct {
@@ -37,14 +37,14 @@ func (handler *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	login, err := getLogin(params.Get("code"))
+	login, err := getToken(params.Get("code"))
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	user, err := getUser(login.AccessToken)
+	validation, err := validateToken(login.AccessToken)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -52,26 +52,28 @@ func (handler *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sessionId := uuid.New()
-	Sessions[sessionId] = user.Id
+	Sessions[sessionId] = validation.UserId
 	http.Redirect(w, r, "http://localhost:8080/#"+sessionId.String(), http.StatusFound)
 }
 
-type LoginResponse struct {
+type TokenResponse struct {
 	AccessToken string `json:"access_token"`
 }
 
-func getLogin(code string) (*LoginResponse, error) {
+func getToken(code string) (*TokenResponse, error) {
 	body := make(map[string]string)
 	body["client_id"] = Conf.ClientId
 	body["client_secret"] = Conf.ClientSecret
 	body["code"] = code
+	body["grant_type"] = "authorization_code"
+	body["redirect_uri"] = "http://localhost:8080/login"
 
 	jsonStr, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", "https://github.com/login/oauth/access_token", bytes.NewBuffer(jsonStr))
+	req, err := http.NewRequest("POST", "https://id.twitch.tv/oauth2/token", bytes.NewBuffer(jsonStr))
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +90,7 @@ func getLogin(code string) (*LoginResponse, error) {
 		return nil, errors.New(resp.Status)
 	}
 
-	var loginResponse LoginResponse
+	var loginResponse TokenResponse
 	err = json.NewDecoder(resp.Body).Decode(&loginResponse)
 	if err != nil {
 		return nil, err
@@ -97,26 +99,17 @@ func getLogin(code string) (*LoginResponse, error) {
 	return &loginResponse, nil
 }
 
-type UserResponse struct {
-	Login string `json:"login"`
-	Id    int    `json:"id"`
+type ValidationResponse struct {
+	UserId string `json:"user_id"`
 }
 
-func getUser(accessToken string) (*UserResponse, error) {
-	body := make(map[string]string)
-	body["access_token"] = accessToken
-
-	jsonBody, err := json.Marshal(body)
+func validateToken(accessToken string) (*ValidationResponse, error) {
+	req, err := http.NewRequest("GET", "https://id.twitch.tv/oauth2/validate", nil)
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequest("GET", "https://api.github.com/user", bytes.NewBuffer(jsonBody))
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
+	req.Header.Add("Authorization", fmt.Sprintf("OAuth %s", accessToken))
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Content-Type", "application/json")
 
@@ -129,7 +122,7 @@ func getUser(accessToken string) (*UserResponse, error) {
 		return nil, errors.New(resp.Status)
 	}
 
-	var userInfo UserResponse
+	var userInfo ValidationResponse
 	err = json.NewDecoder(resp.Body).Decode(&userInfo)
 	if err != nil {
 		return nil, err
