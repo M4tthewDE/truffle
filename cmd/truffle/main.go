@@ -5,12 +5,14 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
-	"github.com/joho/godotenv"
 	"github.com/m4tthewde/truffle/internal"
 )
 
 func main() {
-	godotenv.Load()
+	err := internal.LoadConfig()
+	if err != nil {
+		log.Fatalln(err)
+	}
 
 	internal.Sessions = make(map[uuid.UUID]int)
 
