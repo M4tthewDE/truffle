@@ -46,6 +46,7 @@ func (handler *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	go readChat(Sessions[*sessionId])
+	go startWebsocket(sessionId)
 
 	err = handler.settingsTemplate.Execute(w, nil)
 	if err != nil {
@@ -89,10 +90,21 @@ type Metadata struct {
 
 type Payload struct {
 	Session Session `json:"session"`
+	Event   Event   `json:"event"`
 }
 
 type Session struct {
 	Id string `json:"id"`
+}
+
+type Event struct {
+	ChatterUserName string      `json:"chatter_user_name"`
+	ChatMessage     ChatMessage `json:"message"`
+	Color           string      `json:"color"`
+}
+
+type ChatMessage struct {
+	Text string `json:"text"`
 }
 
 func handleRawMessage(rawMsg []byte, userInfo UserInfo) error {
@@ -117,7 +129,7 @@ func handleRawMessage(rawMsg []byte, userInfo UserInfo) error {
 	}
 
 	if msg.Metadata.MessageType == "notification" {
-		// TODO: parse and send to frontend websocket
+		// TODO: send to frontend websocket
 	}
 
 	return nil
