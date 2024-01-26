@@ -9,12 +9,13 @@ import (
 )
 
 func main() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	err := internal.LoadConfig()
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	internal.Sessions = make(map[uuid.UUID]int)
+	internal.Sessions = make(map[uuid.UUID]string)
 
 	rootHandler, err := internal.NewRootHandler()
 	if err != nil {
