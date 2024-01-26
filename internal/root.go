@@ -4,7 +4,6 @@ import (
 	"errors"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 	"text/template"
 
@@ -40,7 +39,7 @@ func (handler *RootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	rootData := RootData{
 		LoggedIn: loggedIn,
-		ClientId: os.Getenv("CLIENT_ID"),
+		ClientId: Conf.ClientId,
 	}
 	err = handler.indexTemplate.Execute(w, rootData)
 	if err != nil {

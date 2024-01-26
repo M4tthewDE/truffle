@@ -8,7 +8,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"os"
 
 	"github.com/google/uuid"
 )
@@ -63,8 +62,8 @@ type LoginResponse struct {
 
 func getLogin(code string) (*LoginResponse, error) {
 	body := make(map[string]string)
-	body["client_id"] = os.Getenv("CLIENT_ID")
-	body["client_secret"] = os.Getenv("CLIENT_SECRET")
+	body["client_id"] = Conf.ClientId
+	body["client_secret"] = Conf.ClientSecret
 	body["code"] = code
 
 	jsonStr, err := json.Marshal(body)
