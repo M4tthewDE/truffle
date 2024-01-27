@@ -1,8 +1,14 @@
 <h2>Chat</h2>
-<form>
+<form class="channel-form" form>
 	<label for="channel">Channel</label>
 	<input id="channel" name="channel">
 	<input type="submit" value="Submit" hx-post="/chatbox" hx-triger="click" hx-target="#chatbox-div">
 </form>
 <div id="chatbox-div">
 </div>
+
+<style>
+	.channel-form {
+		padding-bottom: 10px;
+	}
+</style>

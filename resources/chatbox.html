@@ -1,3 +1,21 @@
-<div hx-ext="ws" ws-connect="/chat/messages?channel={{.Channel}}">
+<style>
+	.chat-room-div {
+		height: 400px;
+		overflow: auto;
+		border: 1px solid #ccc;
+		padding: 10px;
+	}
+</style>
+
+<div id="chat-room-div" class="chat-room-div" hx-ext="ws" ws-connect="/chat/messages?channel={{.Channel}}">
 	<div id="msg"></div>
 </div>
+
+<script>
+	htmx.on("htmx:oobAfterSwap", function (evt) {
+		if (evt.detail.target.attributes["id"].nodeValue === "msg") {
+			const container = document.getElementById("chat-room-div");
+			container.scrollTop = container.scrollHeight;
+		}
+	});
+</script>

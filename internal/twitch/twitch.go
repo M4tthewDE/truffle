@@ -189,7 +189,5 @@ func GetChannelId(authentication Authentication, channel string) (string, error)
 		return "", err
 	}
 
-	log.Println(channelResponse)
-
 	return channelResponse.Data[0].Id, nil
 }
