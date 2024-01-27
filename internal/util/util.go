@@ -1,4 +1,4 @@
-package internal
+package util
 
 import (
 	"errors"
@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func sessionIdFromRequest(r *http.Request) (*uuid.UUID, error) {
+func SessionIdFromRequest(r *http.Request) (*uuid.UUID, error) {
 	sessionCookie, err := r.Cookie("sessionid")
 	if err != nil {
 		return nil, err

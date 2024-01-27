@@ -1,8 +1,10 @@
-package internal
+package handlers
 
 import (
 	"net/http"
 	"text/template"
+
+	"github.com/m4tthewde/truffle/internal/util"
 )
 
 type SettingsHandler struct {
@@ -24,7 +26,7 @@ func (handler *SettingsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	sessionId, err := sessionIdFromRequest(r)
+	sessionId, err := util.SessionIdFromRequest(r)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return

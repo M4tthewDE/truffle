@@ -1,7 +1,9 @@
-package internal
+package handlers
 
 import (
 	"net/http"
+
+	"github.com/m4tthewde/truffle/internal/util"
 )
 
 func LogoutHandler(w http.ResponseWriter, r *http.Request) {
@@ -10,7 +12,7 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sessionId, err := sessionIdFromRequest(r)
+	sessionId, err := util.SessionIdFromRequest(r)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -25,4 +27,3 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	delete(Sessions, *sessionId)
 	w.WriteHeader(http.StatusNoContent)
 }
-

@@ -1,4 +1,4 @@
-package internal
+package handlers
 
 import (
 	"bytes"
@@ -10,6 +10,7 @@ import (
 	"net/url"
 
 	"github.com/google/uuid"
+	"github.com/m4tthewde/truffle/internal/config"
 )
 
 type UserInfo struct {
@@ -65,8 +66,8 @@ type TokenResponse struct {
 
 func getToken(code string) (*TokenResponse, error) {
 	body := make(map[string]string)
-	body["client_id"] = Conf.ClientId
-	body["client_secret"] = Conf.ClientSecret
+	body["client_id"] = config.Conf.ClientId
+	body["client_secret"] = config.Conf.ClientSecret
 	body["code"] = code
 	body["grant_type"] = "authorization_code"
 	body["redirect_uri"] = "http://localhost:8080/login"

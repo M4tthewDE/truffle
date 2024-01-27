@@ -1,11 +1,13 @@
-package internal
+package handlers
 
 import (
 	"log"
 	"net/http"
 	"text/template"
 
+	"github.com/m4tthewde/truffle/internal/config"
 	"github.com/m4tthewde/truffle/internal/twitch"
+	"github.com/m4tthewde/truffle/internal/util"
 )
 
 var (
@@ -36,7 +38,7 @@ func (handler *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sessionId, err := sessionIdFromRequest(r)
+	sessionId, err := util.SessionIdFromRequest(r)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -52,7 +54,7 @@ func (handler *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_, alreadyConnect := EventChans[userId]
 	if !alreadyConnect {
 		userInfo := Sessions[*sessionId]
-		auth := twitch.NewAuthentication(Conf.ClientId, userInfo.AccessToken)
+		auth := twitch.NewAuthentication(config.Conf.ClientId, userInfo.AccessToken)
 		cond := twitch.NewCondition(userInfo.UserId, userInfo.UserId)
 		go twitch.ReadChat(auth, cond, handleEvent)
 	}
