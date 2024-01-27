@@ -23,11 +23,6 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	dashboardHandler, err := internal.NewDashboardHandler()
-	if err != nil {
-		log.Fatalln(err)
-	}
-
 	chatHandler, err := internal.NewChatHandler()
 	if err != nil {
 		log.Fatalln(err)
@@ -48,7 +43,6 @@ func main() {
 	}
 
 	http.Handle("/", rootHandler)
-	http.Handle("/dashboard", dashboardHandler)
 	http.Handle("/chat", chatHandler)
 	http.Handle("/chat/messages", wsChatHandler)
 	http.Handle("/settings", settingsHandler)
