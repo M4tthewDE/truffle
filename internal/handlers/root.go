@@ -1,12 +1,13 @@
 package handlers
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"text/template"
 
 	"github.com/m4tthewde/truffle/internal/config"
-	"github.com/m4tthewde/truffle/internal/util"
+	"github.com/m4tthewde/truffle/internal/session"
 )
 
 type RootHandler struct {
@@ -29,11 +30,19 @@ type RootData struct {
 
 func (handler *RootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var loggedIn bool
-	sessionId, err := util.SessionIdFromRequest(r)
+
+	_, ok, err := session.SessionFromRequest(r)
 	if err != nil {
-		loggedIn = false
+		if errors.Is(err, http.ErrNoCookie) {
+			loggedIn = false
+		} else {
+			log.Println(err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
 	} else {
-		_, loggedIn = Sessions[*sessionId]
+		loggedIn = ok
 	}
 
 	rootData := RootData{

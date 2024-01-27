@@ -6,8 +6,8 @@ import (
 	"text/template"
 
 	"github.com/m4tthewde/truffle/internal/config"
+	"github.com/m4tthewde/truffle/internal/session"
 	"github.com/m4tthewde/truffle/internal/twitch"
-	"github.com/m4tthewde/truffle/internal/util"
 )
 
 var (
@@ -38,28 +38,25 @@ func (handler *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sessionId, err := util.SessionIdFromRequest(r)
+	s, ok, err := session.SessionFromRequest(r)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
-	} else {
-		_, loggedIn := Sessions[*sessionId]
-		if !loggedIn {
-			w.WriteHeader(http.StatusForbidden)
-			return
-		}
 	}
 
-	userId := Sessions[*sessionId].UserId
-	_, alreadyConnect := EventChans[userId]
+	if !ok {
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+
+	_, alreadyConnect := EventChans[s.UserId]
 	if !alreadyConnect {
-		userInfo := Sessions[*sessionId]
-		auth := twitch.NewAuthentication(config.Conf.ClientId, userInfo.AccessToken)
-		cond := twitch.NewCondition(userInfo.UserId, userInfo.UserId)
+		auth := twitch.NewAuthentication(config.Conf.ClientId, s.AccessToken)
+		cond := twitch.NewCondition(s.UserId, s.UserId)
 		go twitch.ReadChat(auth, cond, handleEvent)
 	}
 
-	err = handler.settingsTemplate.Execute(w, ChatData{SessionId: sessionId.String()})
+	err = handler.settingsTemplate.Execute(w, ChatData{SessionId: s.Id.String()})
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)

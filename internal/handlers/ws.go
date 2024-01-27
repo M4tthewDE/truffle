@@ -7,8 +7,8 @@ import (
 	"text/template"
 
 	"github.com/gorilla/websocket"
+	"github.com/m4tthewde/truffle/internal/session"
 	"github.com/m4tthewde/truffle/internal/twitch"
-	"github.com/m4tthewde/truffle/internal/util"
 )
 
 type WsChatHandler struct {
@@ -27,16 +27,15 @@ var upgrader = websocket.Upgrader{}
 
 // FIXME: this sometimes takes very long (10+ seconds) to connect
 func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	sessionId, err := util.SessionIdFromRequest(r)
+	s, ok, err := session.SessionFromRequest(r)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
-	} else {
-		_, loggedIn := Sessions[*sessionId]
-		if !loggedIn {
-			w.WriteHeader(http.StatusForbidden)
-			return
-		}
+	}
+
+	if !ok {
+		w.WriteHeader(http.StatusForbidden)
+		return
 	}
 
 	c, err := upgrader.Upgrade(w, r, nil)
@@ -46,9 +45,8 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}
 	defer c.Close()
 
-	userId := Sessions[*sessionId].UserId
 	eventChan := make(chan twitch.Event)
-	EventChans[userId] = append(EventChans[userId], eventChan)
+	EventChans[s.UserId] = append(EventChans[s.UserId], eventChan)
 
 	for {
 		event := <-eventChan

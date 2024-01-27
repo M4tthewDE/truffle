@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"text/template"
 
-	"github.com/m4tthewde/truffle/internal/util"
+	"github.com/m4tthewde/truffle/internal/session"
 )
 
 type SettingsHandler struct {
@@ -26,16 +26,15 @@ func (handler *SettingsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	sessionId, err := util.SessionIdFromRequest(r)
+	_, ok, err := session.SessionFromRequest(r)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
-	} else {
-		_, loggedIn := Sessions[*sessionId]
-		if !loggedIn {
-			w.WriteHeader(http.StatusForbidden)
-			return
-		}
+	}
+
+	if !ok {
+		w.WriteHeader(http.StatusForbidden)
+		return
 	}
 
 	err = handler.settingsTemplate.Execute(w, nil)

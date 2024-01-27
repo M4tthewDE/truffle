@@ -4,9 +4,9 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/google/uuid"
 	"github.com/m4tthewde/truffle/internal/config"
 	"github.com/m4tthewde/truffle/internal/handlers"
+	"github.com/m4tthewde/truffle/internal/session"
 	"github.com/m4tthewde/truffle/internal/twitch"
 )
 
@@ -17,7 +17,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	handlers.Sessions = make(map[uuid.UUID]handlers.UserInfo)
+	session.Init()
 	handlers.EventChans = make(map[string][]chan twitch.Event)
 
 	rootHandler, err := handlers.NewRootHandler()

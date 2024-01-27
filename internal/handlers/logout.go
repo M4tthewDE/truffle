@@ -3,7 +3,7 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/m4tthewde/truffle/internal/util"
+	"github.com/m4tthewde/truffle/internal/session"
 )
 
 func LogoutHandler(w http.ResponseWriter, r *http.Request) {
@@ -12,18 +12,17 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sessionId, err := util.SessionIdFromRequest(r)
+	s, ok, err := session.SessionFromRequest(r)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
-	} else {
-		_, loggedIn := Sessions[*sessionId]
-		if !loggedIn {
-			w.WriteHeader(http.StatusForbidden)
-			return
-		}
 	}
 
-	delete(Sessions, *sessionId)
+	if !ok {
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+
+	session.DeleteSession(s)
 	w.WriteHeader(http.StatusNoContent)
 }

@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/m4tthewde/truffle/internal/config"
+	"github.com/m4tthewde/truffle/internal/session"
 )
 
 type UserInfo struct {
@@ -18,11 +19,6 @@ type UserInfo struct {
 	Login       string
 	UserId      string
 }
-
-var (
-	// TODO: expire sessions after a week (like cookies)
-	Sessions map[uuid.UUID]UserInfo
-)
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
@@ -52,11 +48,8 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sessionId := uuid.New()
-	Sessions[sessionId] = UserInfo{
-		AccessToken: login.AccessToken,
-		Login:       validation.Login,
-		UserId:      validation.UserId,
-	}
+	s := session.NewSession(sessionId, login.AccessToken, validation.Login, validation.UserId)
+	session.AddSession(s)
 	http.Redirect(w, r, "http://localhost:8080/#"+sessionId.String(), http.StatusFound)
 }
 
