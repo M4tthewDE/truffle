@@ -111,9 +111,10 @@ type Session struct {
 }
 
 type Event struct {
-	ChatterUserName string      `json:"chatter_user_name"`
-	ChatMessage     ChatMessage `json:"message"`
-	Color           string      `json:"color"`
+	BroadcasterUserName string      `json:"broadcaster_user_name"`
+	ChatterUserName     string      `json:"chatter_user_name"`
+	ChatMessage         ChatMessage `json:"message"`
+	Color               string      `json:"color"`
 }
 
 type ChatMessage struct {
@@ -231,7 +232,7 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	for {
 		msg := <-msgChan
 		var templateBuffer bytes.Buffer
-		if handler.msgTemplate.Execute(&templateBuffer, msg); err != nil {
+		if handler.msgTemplate.Execute(&templateBuffer, msg.Payload.Event); err != nil {
 			log.Println(err)
 			return
 		}

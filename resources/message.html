@@ -1,4 +1,4 @@
 <div id="msg" hx-swap-oob="beforeend">
-	{{.Payload.Event.ChatterUserName}}: {{.Payload.Event.ChatMessage.Text}}
+	[#{{.BroadcasterUserName}}] <span style="color:{{.Color}}">{{.ChatterUserName}}</span>: {{.ChatMessage.Text}}
 	<br>
 </div>
