@@ -3,8 +3,7 @@
 
 <script>
 	htmx.on("htmx:afterOnLoad", function (evt) {
-		console.log('afterOnLoad')
-		document.cookie = 'sessionid=; Max-Age=0'
+		document.cookie = "sessionid=;Max-Age=0;path=/;SameSite=Strict";
 		window.location.href = "/"
 	});
 </script>
