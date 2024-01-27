@@ -10,17 +10,16 @@ import (
 )
 
 type ChatHandler struct {
-	// TODO: rename this
-	settingsTemplate *template.Template
+	chatTemplate *template.Template
 }
 
 func NewChatHandler() (*ChatHandler, error) {
-	settingsTemplate, err := template.ParseFiles("resources/chat.html")
+	chatTemplate, err := template.ParseFiles("resources/chat.html")
 	if err != nil {
 		return nil, err
 	}
 
-	return &ChatHandler{settingsTemplate: settingsTemplate}, nil
+	return &ChatHandler{chatTemplate: chatTemplate}, nil
 }
 
 type ChatData struct {
@@ -44,7 +43,7 @@ func (handler *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = handler.settingsTemplate.Execute(w, nil)
+	err = handler.chatTemplate.Execute(w, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
