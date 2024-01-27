@@ -1,13 +1,9 @@
 package internal
 
 import (
-	"errors"
 	"log"
 	"net/http"
-	"strings"
 	"text/template"
-
-	"github.com/google/uuid"
 )
 
 type RootHandler struct {
@@ -45,23 +41,4 @@ func (handler *RootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatalln(err)
 	}
-}
-
-func sessionIdFromRequest(r *http.Request) (*uuid.UUID, error) {
-	sessionCookie, err := r.Cookie("sessionid")
-	if err != nil {
-		return nil, err
-	}
-
-	splits := strings.Split(sessionCookie.String(), "=")
-	if len(splits) < 2 {
-		return nil, errors.New("invalid cookie format")
-	}
-
-	sessionId, err := uuid.Parse(splits[1])
-	if err != nil {
-		return nil, err
-	}
-
-	return &sessionId, nil
 }
