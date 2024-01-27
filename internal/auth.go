@@ -23,14 +23,7 @@ var (
 	Sessions map[uuid.UUID]UserInfo
 )
 
-type LoginHandler struct {
-}
-
-func NewLoginHandler() (*LoginHandler, error) {
-	return &LoginHandler{}, nil
-}
-
-func (handler *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		w.WriteHeader(http.StatusBadRequest)
 		return
