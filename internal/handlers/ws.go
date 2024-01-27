@@ -7,8 +7,14 @@ import (
 	"text/template"
 
 	"github.com/gorilla/websocket"
+	"github.com/m4tthewde/truffle/internal/config"
 	"github.com/m4tthewde/truffle/internal/session"
 	"github.com/m4tthewde/truffle/internal/twitch"
+)
+
+var (
+	// FIXME: when do these get cleaned up?
+	EventChans map[string][]chan twitch.Event
 )
 
 type WsChatHandler struct {
@@ -38,6 +44,26 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	channels, ok := r.URL.Query()["channel"]
+	if !ok || len(channels) == 0 {
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+
+	auth := twitch.NewAuthentication(config.Conf.ClientId, s.AccessToken)
+
+	channelId, err := twitch.GetChannelId(auth, channels[0])
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	_, alreadyConnect := EventChans[channelId]
+	if !alreadyConnect {
+		cond := twitch.NewCondition(channelId, s.UserId)
+		go twitch.ReadChat(auth, cond, handleEvent)
+	}
+
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
@@ -46,7 +72,7 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	defer c.Close()
 
 	eventChan := make(chan twitch.Event)
-	EventChans[s.UserId] = append(EventChans[s.UserId], eventChan)
+	EventChans[channelId] = append(EventChans[channelId], eventChan)
 
 	for {
 		event := <-eventChan

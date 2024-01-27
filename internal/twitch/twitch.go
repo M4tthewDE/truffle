@@ -150,3 +150,46 @@ func createMessageSub(authentication Authentication, sessionId string, condition
 
 	return nil
 }
+
+type ChannelResponse struct {
+	Data []ChannelData `json:"data"`
+}
+
+type ChannelData struct {
+	Id string `json:"id"`
+}
+
+func GetChannelId(authentication Authentication, channel string) (string, error) {
+	req, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users", nil)
+	if err != nil {
+		return "", err
+	}
+
+	q := req.URL.Query()
+	q.Add("login", channel)
+	req.URL.RawQuery = q.Encode()
+
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Client-Id", authentication.ClientId)
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", authentication.AccessToken))
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+
+	if resp.StatusCode != 200 {
+		return "", errors.New(resp.Status)
+	}
+
+	var channelResponse ChannelResponse
+	err = json.NewDecoder(resp.Body).Decode(&channelResponse)
+	if err != nil {
+		return "", err
+	}
+
+	log.Println(channelResponse)
+
+	return channelResponse.Data[0].Id, nil
+}

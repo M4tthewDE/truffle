@@ -5,17 +5,12 @@ import (
 	"net/http"
 	"text/template"
 
-	"github.com/m4tthewde/truffle/internal/config"
 	"github.com/m4tthewde/truffle/internal/session"
 	"github.com/m4tthewde/truffle/internal/twitch"
 )
 
-var (
-	// FIXME: when do these get cleaned up?
-	EventChans map[string][]chan twitch.Event
-)
-
 type ChatHandler struct {
+	// TODO: rename this
 	settingsTemplate *template.Template
 }
 
@@ -38,7 +33,7 @@ func (handler *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s, ok, err := session.SessionFromRequest(r)
+	_, ok, err := session.SessionFromRequest(r)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -49,14 +44,7 @@ func (handler *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, alreadyConnect := EventChans[s.UserId]
-	if !alreadyConnect {
-		auth := twitch.NewAuthentication(config.Conf.ClientId, s.AccessToken)
-		cond := twitch.NewCondition(s.UserId, s.UserId)
-		go twitch.ReadChat(auth, cond, handleEvent)
-	}
-
-	err = handler.settingsTemplate.Execute(w, ChatData{SessionId: s.Id.String()})
+	err = handler.settingsTemplate.Execute(w, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
