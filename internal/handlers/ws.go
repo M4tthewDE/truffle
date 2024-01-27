@@ -88,3 +88,11 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 }
+
+func handleEvent(event twitch.Event) error {
+	for _, eventChan := range EventChans[event.BroadcasterUserId] {
+		eventChan <- event
+	}
+
+	return nil
+}

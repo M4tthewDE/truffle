@@ -6,7 +6,6 @@ import (
 	"text/template"
 
 	"github.com/m4tthewde/truffle/internal/session"
-	"github.com/m4tthewde/truffle/internal/twitch"
 )
 
 type ChatHandler struct {
@@ -48,12 +47,4 @@ func (handler *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 	}
-}
-
-func handleEvent(event twitch.Event) error {
-	for _, eventChan := range EventChans[event.BroadcasterUserId] {
-		eventChan <- event
-	}
-
-	return nil
 }
