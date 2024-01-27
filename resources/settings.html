@@ -1,1 +1,10 @@
 <h2>Settings</h2>
+<button hx-post="/logout" hx-trigger="click">Logout</button>
+
+<script>
+	htmx.on("htmx:afterOnLoad", function (evt) {
+		console.log('afterOnLoad')
+		document.cookie = 'sessionid=; Max-Age=0'
+		window.location.href = "/"
+	});
+</script>

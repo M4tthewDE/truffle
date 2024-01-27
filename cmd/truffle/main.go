@@ -37,6 +37,7 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
+
 	wsChatHandler, err := internal.NewWsChatHandler()
 	if err != nil {
 		log.Fatalln(err)
@@ -47,6 +48,7 @@ func main() {
 	http.Handle("/chat/messages", wsChatHandler)
 	http.Handle("/settings", settingsHandler)
 	http.Handle("/login", loginHandler)
+	http.HandleFunc("/logout", internal.LogoutHandler)
 
 	log.Println("Starting server on port 8080")
 	http.ListenAndServe(":8080", nil)
