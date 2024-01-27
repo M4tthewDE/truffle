@@ -4,12 +4,12 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 )
 
 var (
-	// TODO: expire sessions after a week (like cookies)
 	sessions map[uuid.UUID]Session
 )
 
@@ -17,8 +17,21 @@ func Init() {
 	sessions = make(map[uuid.UUID]Session)
 }
 
+func CleanupTicker() {
+	ticker := time.NewTicker(1 * time.Minute)
+	for {
+		<-ticker.C
+		for _, s := range sessions {
+			if time.Since(s.Created).Hours() >= 7*24 {
+				DeleteSession(&s)
+			}
+		}
+	}
+}
+
 type Session struct {
 	Id          uuid.UUID
+	Created     time.Time
 	AccessToken string
 	Login       string
 	UserId      string
@@ -27,6 +40,7 @@ type Session struct {
 func NewSession(id uuid.UUID, accessToken string, login string, userId string) Session {
 	return Session{
 		Id:          id,
+		Created:     time.Now(),
 		AccessToken: accessToken,
 		Login:       login,
 		UserId:      userId,

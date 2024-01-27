@@ -18,6 +18,8 @@ func main() {
 	}
 
 	session.Init()
+	go session.CleanupTicker()
+
 	handlers.EventChans = make(map[string][]chan twitch.Event)
 
 	rootHandler, err := handlers.NewRootHandler()
