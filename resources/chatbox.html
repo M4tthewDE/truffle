@@ -27,4 +27,10 @@
 			}
 		}
 	});
+	htmx.on("htmx:wsOpen", function (evt) {
+		if (evt.detail.elt.attributes["id"].nodeValue === "chat-room-div") {
+			const messages = document.getElementById("messages");
+			messages.appendChild(connectedSpan);
+		}
+	});
 </script>
