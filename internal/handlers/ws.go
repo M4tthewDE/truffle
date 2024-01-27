@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"text/template"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/m4tthewde/truffle/internal/config"
@@ -27,6 +28,22 @@ func NewWsChatHandler() (*WsChatHandler, error) {
 		return nil, err
 	}
 	return &WsChatHandler{msgTemplate: msgTemplate}, nil
+}
+
+type MessageData struct {
+	ChatterUserName string
+	Text            string
+	Color           string
+	CreatedAt       string
+}
+
+func NewMessageData(event twitch.Event) MessageData {
+	return MessageData{
+		ChatterUserName: event.ChatterUserName,
+		Text:            event.ChatMessage.Text,
+		Color:           event.Color,
+		CreatedAt:       time.Now().Format(time.TimeOnly),
+	}
 }
 
 var upgrader = websocket.Upgrader{}
@@ -77,7 +94,7 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	for {
 		event := <-eventChan
 		var templateBuffer bytes.Buffer
-		if handler.msgTemplate.Execute(&templateBuffer, event); err != nil {
+		if handler.msgTemplate.Execute(&templateBuffer, NewMessageData(event)); err != nil {
 			log.Println(err)
 			return
 		}
