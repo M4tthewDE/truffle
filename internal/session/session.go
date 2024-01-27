@@ -44,7 +44,7 @@ func DeleteSession(session *Session) {
 func SessionFromRequest(r *http.Request) (*Session, bool, error) {
 	sessionCookie, err := r.Cookie("sessionid")
 	if err != nil {
-		return nil, false, err
+		return nil, false, nil
 	}
 
 	splits := strings.Split(sessionCookie.String(), "=")

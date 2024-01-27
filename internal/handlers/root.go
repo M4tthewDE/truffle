@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"errors"
 	"log"
 	"net/http"
 	"text/template"
@@ -29,20 +28,11 @@ type RootData struct {
 }
 
 func (handler *RootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var loggedIn bool
-
-	_, ok, err := session.SessionFromRequest(r)
+	_, loggedIn, err := session.SessionFromRequest(r)
 	if err != nil {
-		if errors.Is(err, http.ErrNoCookie) {
-			loggedIn = false
-		} else {
-			log.Println(err)
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-	} else {
-		loggedIn = ok
+		log.Println(err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
 	}
 
 	rootData := RootData{
@@ -51,6 +41,6 @@ func (handler *RootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	err = handler.indexTemplate.Execute(w, rootData)
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err)
 	}
 }
