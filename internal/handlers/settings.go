@@ -22,7 +22,7 @@ func NewSettingsHandler() (*SettingsHandler, error) {
 
 func (handler *SettingsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
 
