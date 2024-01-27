@@ -5,9 +5,89 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
+	"net/url"
 	"time"
+
+	"github.com/gorilla/websocket"
 )
+
+type Message struct {
+	Metadata Metadata `json:"metadata"`
+	Payload  Payload  `json:"payload"`
+}
+
+type Metadata struct {
+	MessageId        string    `json:"message_id"`
+	MessageType      string    `json:"message_type"`
+	MessageTimestamp time.Time `json:"message_timestamp"`
+}
+
+type Payload struct {
+	Session Session `json:"session"`
+	Event   Event   `json:"event"`
+}
+
+type Session struct {
+	Id string `json:"id"`
+}
+
+type Event struct {
+	BroadcasterUserName string      `json:"broadcaster_user_name"`
+	BroadcasterUserId   string      `json:"broadcaster_user_id"`
+	ChatterUserName     string      `json:"chatter_user_name"`
+	ChatMessage         ChatMessage `json:"message"`
+	Color               string      `json:"color"`
+}
+
+type ChatMessage struct {
+	Text string `json:"text"`
+}
+
+func ReadChat(auth Authentication, condition Condition, fn func(Event) error) {
+	u := url.URL{Scheme: "wss", Host: "eventsub.wss.twitch.tv", Path: "/ws"}
+	log.Println("Connecting to eventsub websocket")
+
+	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer c.Close()
+
+	for {
+		_, message, err := c.ReadMessage()
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		var msg Message
+		err = json.Unmarshal(message, &msg)
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		if msg.Metadata.MessageType == "session_welcome" {
+			err = createMessageSub(auth, msg.Payload.Session.Id, condition)
+			if err != nil {
+				log.Println(err)
+			}
+		}
+
+		if msg.Metadata.MessageType == "session_reconnect" {
+			// TODO: implement reconnect logic
+		}
+
+		if msg.Metadata.MessageType == "revocation" {
+			// TODO: what do we do in this case?
+		}
+
+		err = fn(msg.Payload.Event)
+		if err != nil {
+			log.Fatalln(err)
+		}
+	}
+}
 
 type Condition struct {
 	BroadcasterUserId string `json:"broadcaster_user_id"`
@@ -33,7 +113,7 @@ func NewAuthentication(clientId string, accessToken string) Authentication {
 	}
 }
 
-func CreateMessageSub(authentication Authentication, sessionId string, condition Condition) error {
+func createMessageSub(authentication Authentication, sessionId string, condition Condition) error {
 	transport := make(map[string]string)
 	transport["method"] = "websocket"
 	transport["session_id"] = sessionId
@@ -69,35 +149,4 @@ func CreateMessageSub(authentication Authentication, sessionId string, condition
 	}
 
 	return nil
-}
-
-type Message struct {
-	Metadata Metadata `json:"metadata"`
-	Payload  Payload  `json:"payload"`
-}
-
-type Metadata struct {
-	MessageId        string    `json:"message_id"`
-	MessageType      string    `json:"message_type"`
-	MessageTimestamp time.Time `json:"message_timestamp"`
-}
-
-type Payload struct {
-	Session Session `json:"session"`
-	Event   Event   `json:"event"`
-}
-
-type Session struct {
-	Id string `json:"id"`
-}
-
-type Event struct {
-	BroadcasterUserName string      `json:"broadcaster_user_name"`
-	ChatterUserName     string      `json:"chatter_user_name"`
-	ChatMessage         ChatMessage `json:"message"`
-	Color               string      `json:"color"`
-}
-
-type ChatMessage struct {
-	Text string `json:"text"`
 }

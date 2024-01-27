@@ -17,7 +17,7 @@ func main() {
 	}
 
 	internal.Sessions = make(map[uuid.UUID]internal.UserInfo)
-	internal.MsgChans = make(map[string][]chan twitch.Message)
+	internal.EventChans = make(map[string][]chan twitch.Event)
 
 	rootHandler, err := internal.NewRootHandler()
 	if err != nil {

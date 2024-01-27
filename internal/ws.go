@@ -24,6 +24,7 @@ func NewWsChatHandler() (*WsChatHandler, error) {
 
 var upgrader = websocket.Upgrader{}
 
+// FIXME: this sometimes takes very long (10+ seconds) to connect
 func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	sessionId, err := sessionIdFromRequest(r)
 	if err != nil {
@@ -45,13 +46,13 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	defer c.Close()
 
 	userId := Sessions[*sessionId].UserId
-	msgChan := make(chan twitch.Message)
-	MsgChans[userId] = append(MsgChans[userId], msgChan)
+	eventChan := make(chan twitch.Event)
+	EventChans[userId] = append(EventChans[userId], eventChan)
 
 	for {
-		msg := <-msgChan
+		event := <-eventChan
 		var templateBuffer bytes.Buffer
-		if handler.msgTemplate.Execute(&templateBuffer, msg.Payload.Event); err != nil {
+		if handler.msgTemplate.Execute(&templateBuffer, event); err != nil {
 			log.Println(err)
 			return
 		}
