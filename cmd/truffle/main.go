@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/m4tthewde/truffle/internal"
+	"github.com/m4tthewde/truffle/internal/twitch"
 )
 
 func main() {
@@ -16,7 +17,7 @@ func main() {
 	}
 
 	internal.Sessions = make(map[uuid.UUID]internal.UserInfo)
-	internal.MsgChans = make(map[string][]chan internal.Message)
+	internal.MsgChans = make(map[string][]chan twitch.Message)
 
 	rootHandler, err := internal.NewRootHandler()
 	if err != nil {

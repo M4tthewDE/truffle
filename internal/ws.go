@@ -7,6 +7,7 @@ import (
 	"text/template"
 
 	"github.com/gorilla/websocket"
+	"github.com/m4tthewde/truffle/internal/twitch"
 )
 
 type WsChatHandler struct {
@@ -44,7 +45,7 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	defer c.Close()
 
 	userId := Sessions[*sessionId].UserId
-	msgChan := make(chan Message)
+	msgChan := make(chan twitch.Message)
 	MsgChans[userId] = append(MsgChans[userId], msgChan)
 
 	for {
