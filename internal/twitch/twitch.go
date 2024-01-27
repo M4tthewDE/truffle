@@ -51,26 +51,31 @@ func ReadChat(auth Authentication, condition Condition, fn func(Event) error) {
 
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err)
+		return
 	}
+
 	defer c.Close()
 
 	for {
 		_, message, err := c.ReadMessage()
 		if err != nil {
-			log.Fatalln(err)
+			log.Println(err)
+			return
 		}
 
 		var msg Message
 		err = json.Unmarshal(message, &msg)
 		if err != nil {
-			log.Fatalln(err)
+			log.Println(err)
+			return
 		}
 
 		if msg.Metadata.MessageType == "session_welcome" {
 			err = createMessageSub(auth, msg.Payload.Session.Id, condition)
 			if err != nil {
 				log.Println(err)
+				return
 			}
 		}
 
@@ -84,7 +89,8 @@ func ReadChat(auth Authentication, condition Condition, fn func(Event) error) {
 
 		err = fn(msg.Payload.Event)
 		if err != nil {
-			log.Fatalln(err)
+			log.Println(err)
+			return
 		}
 	}
 }
