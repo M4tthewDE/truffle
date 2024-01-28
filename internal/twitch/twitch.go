@@ -202,13 +202,13 @@ type TokenResponse struct {
 	AccessToken string `json:"access_token"`
 }
 
-func GetToken(code string, clientId string, clientSecret string) (*TokenResponse, error) {
+func GetToken(code string, clientId string, clientSecret string, uri string) (*TokenResponse, error) {
 	body := make(map[string]string)
 	body["client_id"] = clientId
 	body["client_secret"] = clientSecret
 	body["code"] = code
 	body["grant_type"] = "authorization_code"
-	body["redirect_uri"] = "http://localhost:8080/login"
+	body["redirect_uri"] = fmt.Sprintf("%s/login", uri)
 
 	jsonStr, err := json.Marshal(body)
 	if err != nil {

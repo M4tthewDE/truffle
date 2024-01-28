@@ -25,6 +25,7 @@ func NewRootHandler() (*RootHandler, error) {
 type RootData struct {
 	LoggedIn bool
 	ClientId string
+	Url      string
 }
 
 func (handler *RootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -38,6 +39,7 @@ func (handler *RootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rootData := RootData{
 		LoggedIn: loggedIn,
 		ClientId: config.Conf.ClientId,
+		Url:      config.Conf.Url,
 	}
 	err = handler.indexTemplate.Execute(w, rootData)
 	if err != nil {

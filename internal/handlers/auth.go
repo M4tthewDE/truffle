@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"net/url"
@@ -30,7 +31,12 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	login, err := twitch.GetToken(params.Get("code"), config.Conf.ClientId, config.Conf.ClientSecret)
+	login, err := twitch.GetToken(
+		params.Get("code"),
+		config.Conf.ClientId,
+		config.Conf.ClientSecret,
+		config.Conf.Url,
+	)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -47,5 +53,5 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	sessionId := uuid.New()
 	s := session.NewSession(sessionId, login.AccessToken, validation.Login, validation.UserId)
 	session.AddSession(s)
-	http.Redirect(w, r, "http://localhost:8080/#"+sessionId.String(), http.StatusFound)
+	http.Redirect(w, r, fmt.Sprintf("%s/#%s", config.Conf.Url, sessionId.String()), http.StatusFound)
 }

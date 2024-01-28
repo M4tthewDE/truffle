@@ -13,6 +13,7 @@ var (
 type Config struct {
 	ClientId     string `json:"client_id"`
 	ClientSecret string `json:"client_secret"`
+	Url          string `json:"url"`
 }
 
 func LoadConfig() error {
