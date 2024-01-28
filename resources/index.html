@@ -12,8 +12,8 @@
 		Login
 	</a>
 	{{else}}
-	<button hx-post="/chat" hx-trigger="click" hx-target="#main-div">Chat</button>
-	<button hx-post="/settings" hx-trigger="click" hx-target="#main-div">Settings</button>
+	<button hx-get="/chat" hx-trigger="click" hx-target="#main-div">Chat</button>
+	<button hx-get="/settings" hx-trigger="click" hx-target="#main-div">Settings</button>
 
 	<div id="main-div">
 	</div>
