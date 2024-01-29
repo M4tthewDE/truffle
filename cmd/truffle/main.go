@@ -20,6 +20,8 @@ func main() {
 	session.Init()
 	go session.CleanupTicker()
 
+	twitch.InitEventChans(config.Conf.ClientId, config.Conf.ClientSecret)
+
 	handlers.EventChans = make(map[string][]chan twitch.Event)
 
 	rootHandler, err := handlers.NewRootHandler()
@@ -54,6 +56,7 @@ func main() {
 	http.Handle("/settings", settingsHandler)
 	http.HandleFunc("/login", handlers.LoginHandler)
 	http.HandleFunc("/logout", handlers.LogoutHandler)
+	http.HandleFunc("/callback/twitch", twitch.CallbackHandler)
 
 	log.Println("Starting server on port 8080")
 	http.ListenAndServe(":8080", nil)

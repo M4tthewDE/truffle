@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"fmt"
 	"log"
 	"net/http"
 	"text/template"
@@ -76,20 +77,29 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}
 
 	_, alreadyConnect := EventChans[channelId]
+	eventChan := make(chan twitch.Event)
 	if !alreadyConnect {
 		cond := twitch.NewCondition(channelId, s.UserId)
-		go twitch.ReadChat(auth, cond, handleEvent)
+		err := twitch.ListenToChannel(
+			config.Conf.ClientId,
+			cond,
+			fmt.Sprintf("%s/callback/twitch", config.Conf.Url),
+			eventChan,
+		)
+		if err != nil {
+			log.Println(err)
+			return
+		}
 	}
 
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	defer c.Close()
 
-	eventChan := make(chan twitch.Event)
-	EventChans[channelId] = append(EventChans[channelId], eventChan)
+	defer c.Close()
 
 	for {
 		event := <-eventChan
