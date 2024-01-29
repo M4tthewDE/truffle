@@ -54,14 +54,22 @@ func Init() {
 	eventChans = make(map[string][]chan Event)
 }
 
+func Register(broadcasterUserId string, eventChan chan Event) {
+	eventChans[broadcasterUserId] = append(eventChans[broadcasterUserId], eventChan)
+}
+
 func ReadChat(auth Authentication, condition Condition, eventChan chan Event) {
-	_, alreadyConnect := eventChans[condition.BroadcasterUserId]
-	if alreadyConnect {
+	_, connected := eventChans[condition.BroadcasterUserId]
+	if connected {
+		eventChans[condition.BroadcasterUserId] = append(eventChans[condition.BroadcasterUserId], eventChan)
 		return
 	}
 
 	eventChans[condition.BroadcasterUserId] = append(eventChans[condition.BroadcasterUserId], eventChan)
+	go read(auth, condition)
+}
 
+func read(auth Authentication, condition Condition) {
 	u := url.URL{Scheme: "wss", Host: "eventsub.wss.twitch.tv", Path: "/ws"}
 	log.Println("Connecting to eventsub websocket")
 
