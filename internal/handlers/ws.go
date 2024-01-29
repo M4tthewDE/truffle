@@ -70,9 +70,9 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	eventChan := make(chan twitch.Event)
 	cond := twitch.NewCondition(channelId, s.UserId)
-	twitch.ReadChat(auth, cond, eventChan)
+	conn := make(chan twitch.Event)
+	id := twitch.ReadChat(auth, cond, conn)
 
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -80,10 +80,26 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	c.SetCloseHandler(func(code int, text string) error {
+		twitch.RemoveConnection(cond.BroadcasterUserId, id)
+		return nil
+	})
+
 	defer c.Close()
 
+	// need to read so that we can receive close messages to the callback
+	go func() {
+		for {
+			_, _, err := c.ReadMessage()
+			if err != nil {
+				return
+			}
+		}
+	}()
+
 	for {
-		event := <-eventChan
+
+		event := <-conn
 		var templateBuffer bytes.Buffer
 		if handler.msgTemplate.Execute(&templateBuffer, NewMessageData(event)); err != nil {
 			log.Println(err)

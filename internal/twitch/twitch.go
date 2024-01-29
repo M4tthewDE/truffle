@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
@@ -46,27 +47,32 @@ type ChatMessage struct {
 }
 
 var (
-	// FIXME: when do these get cleaned up?
-	eventChans map[string][]chan Event
+	// TODO: remove connections that are unneeded
+	conns map[string]map[uuid.UUID]chan Event
 )
 
 func Init() {
-	eventChans = make(map[string][]chan Event)
+	conns = make(map[string]map[uuid.UUID]chan Event)
 }
 
-func Register(broadcasterUserId string, eventChan chan Event) {
-	eventChans[broadcasterUserId] = append(eventChans[broadcasterUserId], eventChan)
+func RemoveConnection(broadcasterUserId string, id uuid.UUID) {
+	c := conns[broadcasterUserId]
+	delete(c, id)
 }
 
-func ReadChat(auth Authentication, condition Condition, eventChan chan Event) {
-	_, connected := eventChans[condition.BroadcasterUserId]
+func ReadChat(auth Authentication, condition Condition, conn chan Event) uuid.UUID {
+	id := uuid.New()
+
+	_, connected := conns[condition.BroadcasterUserId]
 	if connected {
-		eventChans[condition.BroadcasterUserId] = append(eventChans[condition.BroadcasterUserId], eventChan)
-		return
+		conns[condition.BroadcasterUserId][id] = conn
+		return id
 	}
 
-	eventChans[condition.BroadcasterUserId] = append(eventChans[condition.BroadcasterUserId], eventChan)
+	conns[condition.BroadcasterUserId] = map[uuid.UUID]chan Event{id: conn}
 	go read(auth, condition)
+
+	return id
 }
 
 func read(auth Authentication, condition Condition) {
@@ -111,8 +117,8 @@ func read(auth Authentication, condition Condition) {
 			// TODO: what do we do in this case?
 		}
 
-		for _, eventChan := range eventChans[msg.Payload.Event.BroadcasterUserId] {
-			eventChan <- msg.Payload.Event
+		for _, conn := range conns[msg.Payload.Event.BroadcasterUserId] {
+			conn <- msg.Payload.Event
 		}
 	}
 }
