@@ -13,11 +13,6 @@ import (
 	"github.com/m4tthewde/truffle/internal/twitch"
 )
 
-var (
-	// FIXME: when do these get cleaned up?
-	EventChans map[string][]chan twitch.Event
-)
-
 type WsChatHandler struct {
 	msgTemplate *template.Template
 }
@@ -75,11 +70,9 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	_, alreadyConnect := EventChans[channelId]
-	if !alreadyConnect {
-		cond := twitch.NewCondition(channelId, s.UserId)
-		go twitch.ReadChat(auth, cond, handleEvent)
-	}
+	eventChan := make(chan twitch.Event)
+	cond := twitch.NewCondition(channelId, s.UserId)
+	go twitch.ReadChat(auth, cond, eventChan)
 
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -87,9 +80,6 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	defer c.Close()
-
-	eventChan := make(chan twitch.Event)
-	EventChans[channelId] = append(EventChans[channelId], eventChan)
 
 	for {
 		event := <-eventChan
@@ -104,12 +94,4 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 	}
-}
-
-func handleEvent(event twitch.Event) error {
-	for _, eventChan := range EventChans[event.BroadcasterUserId] {
-		eventChan <- event
-	}
-
-	return nil
 }

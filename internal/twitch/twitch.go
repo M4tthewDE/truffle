@@ -45,7 +45,23 @@ type ChatMessage struct {
 	Text string `json:"text"`
 }
 
-func ReadChat(auth Authentication, condition Condition, fn func(Event) error) {
+var (
+	// FIXME: when do these get cleaned up?
+	eventChans map[string][]chan Event
+)
+
+func Init() {
+	eventChans = make(map[string][]chan Event)
+}
+
+func ReadChat(auth Authentication, condition Condition, eventChan chan Event) {
+	_, alreadyConnect := eventChans[condition.BroadcasterUserId]
+	if alreadyConnect {
+		return
+	}
+
+	eventChans[condition.BroadcasterUserId] = append(eventChans[condition.BroadcasterUserId], eventChan)
+
 	u := url.URL{Scheme: "wss", Host: "eventsub.wss.twitch.tv", Path: "/ws"}
 	log.Println("Connecting to eventsub websocket")
 
@@ -87,10 +103,8 @@ func ReadChat(auth Authentication, condition Condition, fn func(Event) error) {
 			// TODO: what do we do in this case?
 		}
 
-		err = fn(msg.Payload.Event)
-		if err != nil {
-			log.Println(err)
-			return
+		for _, eventChan := range eventChans[msg.Payload.Event.BroadcasterUserId] {
+			eventChan <- msg.Payload.Event
 		}
 	}
 }
