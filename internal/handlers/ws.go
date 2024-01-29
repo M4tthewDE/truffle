@@ -72,13 +72,14 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 
 	eventChan := make(chan twitch.Event)
 	cond := twitch.NewCondition(channelId, s.UserId)
-	go twitch.ReadChat(auth, cond, eventChan)
+	twitch.ReadChat(auth, cond, eventChan)
 
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
 		return
 	}
+
 	defer c.Close()
 
 	for {
