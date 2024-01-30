@@ -6,40 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"time"
 )
-
-type Message struct {
-	Metadata Metadata `json:"metadata"`
-	Payload  Payload  `json:"payload"`
-}
-
-type Metadata struct {
-	MessageId        string    `json:"message_id"`
-	MessageType      string    `json:"message_type"`
-	MessageTimestamp time.Time `json:"message_timestamp"`
-}
-
-type Payload struct {
-	Session Session `json:"session"`
-	Event   Event   `json:"event"`
-}
-
-type Session struct {
-	Id string `json:"id"`
-}
-
-type Event struct {
-	BroadcasterUserName string      `json:"broadcaster_user_name"`
-	BroadcasterUserId   string      `json:"broadcaster_user_id"`
-	ChatterUserName     string      `json:"chatter_user_name"`
-	ChatMessage         ChatMessage `json:"message"`
-	Color               string      `json:"color"`
-}
-
-type ChatMessage struct {
-	Text string `json:"text"`
-}
 
 type Condition struct {
 	BroadcasterUserId string `json:"broadcaster_user_id"`
@@ -73,13 +40,17 @@ type EventsubData struct {
 	Id string `json:"id"`
 }
 
-func createMessageSub(authentication Authentication, sessionId string, condition Condition) (string, error) {
+const (
+	MESSAGE_TYPE = "channel.chat.message"
+)
+
+func createEventSub(authentication Authentication, sessionId string, condition Condition, subType string) (string, error) {
 	transport := make(map[string]string)
 	transport["method"] = "websocket"
 	transport["session_id"] = sessionId
 
 	body := make(map[string]interface{})
-	body["type"] = "channel.chat.message"
+	body["type"] = subType
 	body["version"] = "1"
 	body["condition"] = condition
 	body["transport"] = transport

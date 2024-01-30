@@ -5,9 +5,42 @@ import (
 	"encoding/json"
 	"log"
 	"net/url"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
+
+type Message struct {
+	Metadata Metadata `json:"metadata"`
+	Payload  Payload  `json:"payload"`
+}
+
+type Metadata struct {
+	MessageId        string    `json:"message_id"`
+	MessageType      string    `json:"message_type"`
+	MessageTimestamp time.Time `json:"message_timestamp"`
+}
+
+type Payload struct {
+	Session Session `json:"session"`
+	Event   Event   `json:"event"`
+}
+
+type Session struct {
+	Id string `json:"id"`
+}
+
+type Event struct {
+	BroadcasterUserName string      `json:"broadcaster_user_name"`
+	BroadcasterUserId   string      `json:"broadcaster_user_id"`
+	ChatterUserName     string      `json:"chatter_user_name"`
+	ChatMessage         ChatMessage `json:"message"`
+	Color               string      `json:"color"`
+}
+
+type ChatMessage struct {
+	Text string `json:"text"`
+}
 
 func Read(auth Authentication, cond Condition, wsChan chan Event, ctx context.Context) {
 	u := url.URL{Scheme: "wss", Host: "eventsub.wss.twitch.tv", Path: "/ws"}
@@ -41,7 +74,6 @@ func Read(auth Authentication, cond Condition, wsChan chan Event, ctx context.Co
 				return
 			}
 		}
-
 	}
 }
 
@@ -53,7 +85,7 @@ func handleMsg(data []byte, auth Authentication, cond Condition, wsChan chan Eve
 	}
 
 	if msg.Metadata.MessageType == "session_welcome" {
-		_, err := createMessageSub(auth, msg.Payload.Session.Id, cond)
+		_, err := createEventSub(auth, msg.Payload.Session.Id, cond, MESSAGE_TYPE)
 		if err != nil {
 			return err
 		}
