@@ -80,10 +80,8 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	done := make(chan bool)
 	c.SetCloseHandler(func(code int, text string) error {
 		twitch.Part(cond.BroadcasterUserId, id)
-		done <- true
 		return nil
 	})
 
@@ -100,20 +98,19 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}()
 
 	for {
-		select {
-		case <-done:
+		event, ok := <-conn
+		if !ok {
 			return
-		case event := <-conn:
-			var templateBuffer bytes.Buffer
-			if handler.msgTemplate.Execute(&templateBuffer, NewMessageData(event)); err != nil {
-				log.Println(err)
-				return
-			}
+		}
+		var templateBuffer bytes.Buffer
+		if handler.msgTemplate.Execute(&templateBuffer, NewMessageData(event)); err != nil {
+			log.Println(err)
+			return
+		}
 
-			if c.WriteMessage(websocket.TextMessage, templateBuffer.Bytes()); err != nil {
-				log.Println(err)
-				return
-			}
+		if c.WriteMessage(websocket.TextMessage, templateBuffer.Bytes()); err != nil {
+			log.Println(err)
+			return
 		}
 	}
 }
