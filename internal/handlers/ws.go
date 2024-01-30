@@ -15,7 +15,8 @@ import (
 )
 
 type WsChatHandler struct {
-	msgTemplate *template.Template
+	msgTemplate   *template.Template
+	unbanTemplate *template.Template
 }
 
 func NewWsChatHandler() (*WsChatHandler, error) {
@@ -23,7 +24,15 @@ func NewWsChatHandler() (*WsChatHandler, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &WsChatHandler{msgTemplate: msgTemplate}, nil
+
+	unbanTemplate, err := template.ParseFiles("resources/unban_message.html")
+	if err != nil {
+		return nil, err
+	}
+	return &WsChatHandler{
+		msgTemplate:   msgTemplate,
+		unbanTemplate: unbanTemplate,
+	}, nil
 }
 
 type MessageData struct {
@@ -39,6 +48,20 @@ func NewMessageData(event twitch.Event) MessageData {
 		Text:            event.ChatMessage.Text,
 		Color:           event.Color,
 		CreatedAt:       time.Now().Format(time.TimeOnly),
+	}
+}
+
+type UnbanMessageData struct {
+	CreatedAt          string
+	ModeratorUserLogin string
+	UserLogin          string
+}
+
+func NewUnbanMessageData(payload twitch.Payload) UnbanMessageData {
+	return UnbanMessageData{
+		CreatedAt:          time.Now().Format(time.TimeOnly),
+		ModeratorUserLogin: payload.Event.ModeratorUserLogin,
+		UserLogin:          payload.Event.UserLogin,
 	}
 }
 
@@ -72,7 +95,7 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}
 
 	cond := twitch.NewCondition(channelId, s.UserId)
-	conn := make(chan twitch.Event)
+	conn := make(chan twitch.Payload)
 	ctx, cancel := context.WithCancel(context.Background())
 	go twitch.Read(auth, cond, conn, ctx)
 
@@ -96,14 +119,23 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}(cancel)
 
 	for {
-		event, ok := <-conn
+		payload, ok := <-conn
 		if !ok {
 			return
 		}
+
 		var templateBuffer bytes.Buffer
-		if handler.msgTemplate.Execute(&templateBuffer, NewMessageData(event)); err != nil {
-			log.Println(err)
-			return
+		switch payload.Subscription.Type {
+		case twitch.MESSAGE_TYPE:
+			if handler.msgTemplate.Execute(&templateBuffer, NewMessageData(payload.Event)); err != nil {
+				log.Println(err)
+				return
+			}
+		case twitch.UNBAN_TYPE:
+			if handler.unbanTemplate.Execute(&templateBuffer, NewUnbanMessageData(payload)); err != nil {
+				log.Println(err)
+				return
+			}
 		}
 
 		if c.WriteMessage(websocket.TextMessage, templateBuffer.Bytes()); err != nil {

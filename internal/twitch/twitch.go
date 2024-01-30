@@ -42,7 +42,11 @@ type EventsubData struct {
 
 const (
 	MESSAGE_TYPE = "channel.chat.message"
+	BAN_TYPE     = "channel.ban"
+	UNBAN_TYPE   = "channel.unban"
 )
+
+var ForbiddenError = errors.New("403 Forbidden")
 
 func createEventSub(authentication Authentication, sessionId string, condition Condition, subType string) (string, error) {
 	transport := make(map[string]string)
@@ -73,6 +77,10 @@ func createEventSub(authentication Authentication, sessionId string, condition C
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return "", err
+	}
+
+	if resp.StatusCode == 403 {
+		return "", ForbiddenError
 	}
 
 	if resp.StatusCode != 202 {

@@ -3,6 +3,7 @@ package twitch
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/url"
 	"time"
@@ -22,12 +23,17 @@ type Metadata struct {
 }
 
 type Payload struct {
-	Session Session `json:"session"`
-	Event   Event   `json:"event"`
+	Session      Session      `json:"session"`
+	Subscription Subscription `json:"subscription"`
+	Event        Event        `json:"event"`
 }
 
 type Session struct {
 	Id string `json:"id"`
+}
+
+type Subscription struct {
+	Type string `json:"type"`
 }
 
 type Event struct {
@@ -36,13 +42,16 @@ type Event struct {
 	ChatterUserName     string      `json:"chatter_user_name"`
 	ChatMessage         ChatMessage `json:"message"`
 	Color               string      `json:"color"`
+	ModeratorUserLogin  string      `json:"moderator_user_login"`
+	UserLogin           string      `json:"user_login"`
 }
 
 type ChatMessage struct {
 	Text string `json:"text"`
 }
 
-func Read(auth Authentication, cond Condition, wsChan chan Event, ctx context.Context) {
+func Read(auth Authentication, cond Condition, wsChan chan Payload, ctx context.Context) {
+	log.Printf("Joining %s as user %s\n", cond.BroadcasterUserId, cond.UserId)
 	u := url.URL{Scheme: "wss", Host: "eventsub.wss.twitch.tv", Path: "/ws"}
 
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
@@ -77,7 +86,7 @@ func Read(auth Authentication, cond Condition, wsChan chan Event, ctx context.Co
 	}
 }
 
-func handleMsg(data []byte, auth Authentication, cond Condition, wsChan chan Event) error {
+func handleMsg(data []byte, auth Authentication, cond Condition, wsChan chan Payload) error {
 	var msg Message
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
@@ -88,6 +97,24 @@ func handleMsg(data []byte, auth Authentication, cond Condition, wsChan chan Eve
 		_, err := createEventSub(auth, msg.Payload.Session.Id, cond, MESSAGE_TYPE)
 		if err != nil {
 			return err
+		}
+
+		_, err = createEventSub(auth, msg.Payload.Session.Id, cond, BAN_TYPE)
+		if err != nil {
+			if errors.Is(err, ForbiddenError) {
+				log.Printf("User %s is not mod in channel %s\n", cond.UserId, cond.BroadcasterUserId)
+			} else {
+				return err
+			}
+		}
+
+		_, err = createEventSub(auth, msg.Payload.Session.Id, cond, UNBAN_TYPE)
+		if err != nil {
+			if errors.Is(err, ForbiddenError) {
+				log.Printf("User %s is not mod in channel %s\n", cond.UserId, cond.BroadcasterUserId)
+			} else {
+				return err
+			}
 		}
 	}
 
@@ -102,7 +129,7 @@ func handleMsg(data []byte, auth Authentication, cond Condition, wsChan chan Eve
 	}
 
 	if msg.Metadata.MessageType == "notification" {
-		wsChan <- msg.Payload.Event
+		wsChan <- msg.Payload
 	}
 
 	return nil
