@@ -114,7 +114,6 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 				log.Println(err)
 				return
 			}
-		default:
 		}
 	}
 }
