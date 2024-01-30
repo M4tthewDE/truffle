@@ -11,13 +11,13 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type Reader struct {
+type reader struct {
 	eventChan chan Event
 	partChan  chan bool
 }
 
-func NewReader(eventChan chan Event) Reader {
-	return Reader{
+func newReader(eventChan chan Event) reader {
+	return reader{
 		eventChan: eventChan,
 		partChan:  make(chan bool),
 	}
@@ -29,7 +29,7 @@ type websocketMessage struct {
 	err         error
 }
 
-func (r *Reader) read(auth Authentication, condition Condition) {
+func (r *reader) read(auth Authentication, condition Condition) {
 	u := url.URL{Scheme: "wss", Host: "eventsub.wss.twitch.tv", Path: "/ws"}
 
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
@@ -109,28 +109,28 @@ func (r *Reader) read(auth Authentication, condition Condition) {
 }
 
 type joinRequest struct {
-	Id     uuid.UUID
-	WsChan chan Event
-	Auth   Authentication
-	Cond   Condition
+	id     uuid.UUID
+	wsChan chan Event
+	auth   Authentication
+	cond   Condition
 }
 
 type partRequest struct {
-	Id        uuid.UUID
-	ChannelId string
+	id        uuid.UUID
+	channelId string
 }
 
-type ReaderManager struct {
-	readers   map[string]Reader
+type readerManager struct {
+	readers   map[string]reader
 	joinChan  chan joinRequest
 	partChan  chan partRequest
 	eventChan chan Event
 	wsChans   map[string]map[uuid.UUID]chan Event
 }
 
-func newReaderManager() ReaderManager {
-	return ReaderManager{
-		readers:   make(map[string]Reader),
+func newReaderManager() readerManager {
+	return readerManager{
+		readers:   make(map[string]reader),
 		joinChan:  make(chan joinRequest),
 		partChan:  make(chan partRequest),
 		eventChan: make(chan Event),
@@ -138,26 +138,26 @@ func newReaderManager() ReaderManager {
 	}
 }
 
-func (r *ReaderManager) run() {
+func (r *readerManager) run() {
 	ticker := time.NewTicker(10 * time.Second)
 	for {
 		select {
 		case join := <-r.joinChan:
-			channelId := join.Cond.BroadcasterUserId
+			channelId := join.cond.BroadcasterUserId
 			_, connected := r.readers[channelId]
 			if connected {
 				log.Printf("Already connected to %s\n", channelId)
-				r.wsChans[channelId][join.Id] = join.WsChan
+				r.wsChans[channelId][join.id] = join.wsChan
 			} else {
 				log.Printf("Connecting to %s\n", channelId)
-				r.wsChans[channelId] = map[uuid.UUID]chan Event{join.Id: join.WsChan}
-				reader := NewReader(r.eventChan)
-				go reader.read(join.Auth, join.Cond)
+				r.wsChans[channelId] = map[uuid.UUID]chan Event{join.id: join.wsChan}
+				reader := newReader(r.eventChan)
+				go reader.read(join.auth, join.cond)
 				r.readers[channelId] = reader
 			}
 		case part := <-r.partChan:
-			log.Printf("Removing connection to %s for %s\n", part.ChannelId, part.Id)
-			delete(r.wsChans[part.ChannelId], part.Id)
+			log.Printf("Removing connection to %s for %s\n", part.channelId, part.id)
+			delete(r.wsChans[part.channelId], part.id)
 		case event := <-r.eventChan:
 			for _, ws := range r.wsChans[event.BroadcasterUserId] {
 				ws <- event
@@ -178,32 +178,32 @@ func (r *ReaderManager) run() {
 }
 
 var (
-	readerManager ReaderManager
+	rm readerManager
 )
 
 func Init() {
-	readerManager = newReaderManager()
-	go readerManager.run()
+	rm = newReaderManager()
+	go rm.run()
 }
 
 func Join(auth Authentication, cond Condition, wsChan chan Event) uuid.UUID {
 	id := uuid.New()
 	fConn := joinRequest{
-		Id:     id,
-		WsChan: wsChan,
-		Auth:   auth,
-		Cond:   cond,
+		id:     id,
+		wsChan: wsChan,
+		auth:   auth,
+		cond:   cond,
 	}
-	readerManager.joinChan <- fConn
+	rm.joinChan <- fConn
 
 	return id
 }
 
 func Part(channelId string, id uuid.UUID) {
 	partRequest := partRequest{
-		Id:        id,
-		ChannelId: channelId,
+		id:        id,
+		channelId: channelId,
 	}
 
-	readerManager.partChan <- partRequest
+	rm.partChan <- partRequest
 }
