@@ -5,23 +5,9 @@ import (
 	"encoding/json"
 	"log"
 	"net/url"
-	"time"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
-
-type reader struct {
-	eventChan chan Event
-	partChan  chan bool
-}
-
-func newReader(eventChan chan Event) reader {
-	return reader{
-		eventChan: eventChan,
-		partChan:  make(chan bool),
-	}
-}
 
 type websocketMessage struct {
 	messageType int
@@ -29,7 +15,7 @@ type websocketMessage struct {
 	err         error
 }
 
-func (r *reader) read(auth Authentication, cond Condition) {
+func Read(auth Authentication, cond Condition, wsChan chan Event, ctx context.Context) {
 	u := url.URL{Scheme: "wss", Host: "eventsub.wss.twitch.tv", Path: "/ws"}
 
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
@@ -42,7 +28,7 @@ func (r *reader) read(auth Authentication, cond Condition) {
 
 	msgChan := make(chan websocketMessage)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	go func(ctx context.Context) {
 		for {
 			select {
@@ -51,6 +37,7 @@ func (r *reader) read(auth Authentication, cond Condition) {
 				close(msgChan)
 				return
 			default:
+				// TODO: this blocks till there are messages right? does the cancel work then?
 				messageType, message, err := c.ReadMessage()
 				msgChan <- websocketMessage{
 					messageType: messageType,
@@ -63,24 +50,19 @@ func (r *reader) read(auth Authentication, cond Condition) {
 	}(ctx)
 
 	for {
-		select {
-		case wsMsg, ok := <-msgChan:
-			if !ok {
-				cancel()
-				return
-			}
-			err := r.handleMsg(wsMsg, auth, cond)
-			if err != nil {
-				log.Println(err)
-			}
-		case <-r.partChan:
-			log.Printf("Parting %s", cond.BroadcasterUserId)
+		wsMsg, ok := <-msgChan
+		if !ok {
 			cancel()
+			return
+		}
+		err := handleMsg(wsMsg, auth, cond, wsChan)
+		if err != nil {
+			log.Println(err)
 		}
 	}
 }
 
-func (r *reader) handleMsg(wsMsg websocketMessage, auth Authentication, cond Condition) error {
+func handleMsg(wsMsg websocketMessage, auth Authentication, cond Condition, wsChan chan Event) error {
 	if wsMsg.err != nil {
 		return wsMsg.err
 	}
@@ -108,106 +90,6 @@ func (r *reader) handleMsg(wsMsg websocketMessage, auth Authentication, cond Con
 		log.Println("revocation")
 	}
 
-	r.eventChan <- msg.Payload.Event
+	wsChan <- msg.Payload.Event
 	return nil
-}
-
-type joinRequest struct {
-	id     uuid.UUID
-	wsChan chan Event
-	auth   Authentication
-	cond   Condition
-}
-
-type partRequest struct {
-	id        uuid.UUID
-	channelId string
-}
-
-type readerManager struct {
-	readers   map[string]reader
-	joinChan  chan joinRequest
-	partChan  chan partRequest
-	eventChan chan Event
-	wsChans   map[string]map[uuid.UUID]chan Event
-}
-
-func newReaderManager() readerManager {
-	return readerManager{
-		readers:   make(map[string]reader),
-		joinChan:  make(chan joinRequest),
-		partChan:  make(chan partRequest),
-		eventChan: make(chan Event),
-		wsChans:   make(map[string]map[uuid.UUID]chan Event),
-	}
-}
-
-func (r *readerManager) run() {
-	ticker := time.NewTicker(10 * time.Second)
-	for {
-		select {
-		case join := <-r.joinChan:
-			channelId := join.cond.BroadcasterUserId
-			_, connected := r.readers[channelId]
-			if connected {
-				log.Printf("Already connected to %s\n", channelId)
-				r.wsChans[channelId][join.id] = join.wsChan
-			} else {
-				log.Printf("Connecting to %s\n", channelId)
-				r.wsChans[channelId] = map[uuid.UUID]chan Event{join.id: join.wsChan}
-				reader := newReader(r.eventChan)
-				go reader.read(join.auth, join.cond)
-				r.readers[channelId] = reader
-			}
-		case part := <-r.partChan:
-			log.Printf("Removing connection to %s for %s\n", part.channelId, part.id)
-			close(r.wsChans[part.channelId][part.id])
-			delete(r.wsChans[part.channelId], part.id)
-		case event := <-r.eventChan:
-			for _, ws := range r.wsChans[event.BroadcasterUserId] {
-				ws <- event
-			}
-		case <-ticker.C:
-			for channelId, wsChans := range r.wsChans {
-				log.Printf("%d frontend(s) listening to %s\n", len(wsChans), channelId)
-				if len(wsChans) == 0 {
-					log.Printf("Cleaning up %s\n", channelId)
-					r.readers[channelId].partChan <- true
-					delete(r.wsChans, channelId)
-					delete(r.readers, channelId)
-				}
-			}
-		}
-	}
-}
-
-var (
-	rm readerManager
-)
-
-func Init() {
-	rm = newReaderManager()
-	go rm.run()
-}
-
-func Join(auth Authentication, cond Condition, wsChan chan Event) uuid.UUID {
-	id := uuid.New()
-	fConn := joinRequest{
-		id:     id,
-		wsChan: wsChan,
-		auth:   auth,
-		cond:   cond,
-	}
-	rm.joinChan <- fConn
-
-	return id
-}
-
-func Part(channelId string, id uuid.UUID) {
-	partRequest := partRequest{
-		id:        id,
-		channelId: channelId,
-	}
-
-	rm.partChan <- partRequest
 }
