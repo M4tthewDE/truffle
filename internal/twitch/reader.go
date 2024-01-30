@@ -160,6 +160,7 @@ func (r *readerManager) run() {
 			}
 		case part := <-r.partChan:
 			log.Printf("Removing connection to %s for %s\n", part.channelId, part.id)
+			close(r.wsChans[part.channelId][part.id])
 			delete(r.wsChans[part.channelId], part.id)
 		case event := <-r.eventChan:
 			for _, ws := range r.wsChans[event.BroadcasterUserId] {
