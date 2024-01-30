@@ -5,13 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
-	"net/url"
 	"time"
-
-	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
 )
 
 type Message struct {
@@ -46,83 +41,6 @@ type ChatMessage struct {
 	Text string `json:"text"`
 }
 
-var (
-	// TODO: remove connections that are unneeded
-	conns map[string]map[uuid.UUID]chan Event
-)
-
-func Init() {
-	conns = make(map[string]map[uuid.UUID]chan Event)
-}
-
-func RemoveConnection(broadcasterUserId string, id uuid.UUID) {
-	c := conns[broadcasterUserId]
-	delete(c, id)
-}
-
-func ReadChat(auth Authentication, condition Condition, conn chan Event) uuid.UUID {
-	id := uuid.New()
-
-	_, connected := conns[condition.BroadcasterUserId]
-	if connected {
-		conns[condition.BroadcasterUserId][id] = conn
-		return id
-	}
-
-	conns[condition.BroadcasterUserId] = map[uuid.UUID]chan Event{id: conn}
-	go read(auth, condition)
-
-	return id
-}
-
-func read(auth Authentication, condition Condition) {
-	u := url.URL{Scheme: "wss", Host: "eventsub.wss.twitch.tv", Path: "/ws"}
-	log.Println("Connecting to eventsub websocket")
-
-	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	defer c.Close()
-
-	for {
-		_, message, err := c.ReadMessage()
-		if err != nil {
-			log.Println(err)
-			return
-		}
-
-		var msg Message
-		err = json.Unmarshal(message, &msg)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-
-		if msg.Metadata.MessageType == "session_welcome" {
-			err = createMessageSub(auth, msg.Payload.Session.Id, condition)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-		}
-
-		if msg.Metadata.MessageType == "session_reconnect" {
-			// TODO: implement reconnect logic
-		}
-
-		if msg.Metadata.MessageType == "revocation" {
-			// TODO: what do we do in this case?
-		}
-
-		for _, conn := range conns[msg.Payload.Event.BroadcasterUserId] {
-			conn <- msg.Payload.Event
-		}
-	}
-}
-
 type Condition struct {
 	BroadcasterUserId string `json:"broadcaster_user_id"`
 	UserId            string `json:"user_id"`
@@ -147,7 +65,15 @@ func NewAuthentication(clientId string, accessToken string) Authentication {
 	}
 }
 
-func createMessageSub(authentication Authentication, sessionId string, condition Condition) error {
+type EventsubResponse struct {
+	Data []EventsubData `json:"data"`
+}
+
+type EventsubData struct {
+	Id string `json:"id"`
+}
+
+func createMessageSub(authentication Authentication, sessionId string, condition Condition) (string, error) {
 	transport := make(map[string]string)
 	transport["method"] = "websocket"
 	transport["session_id"] = sessionId
@@ -160,12 +86,12 @@ func createMessageSub(authentication Authentication, sessionId string, condition
 
 	jsonStr, err := json.Marshal(body)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	req, err := http.NewRequest("POST", "https://api.twitch.tv/helix/eventsub/subscriptions", bytes.NewBuffer(jsonStr))
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	req.Header.Add("Accept", "application/json")
@@ -175,10 +101,43 @@ func createMessageSub(authentication Authentication, sessionId string, condition
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	if resp.StatusCode != 202 {
+		return "", errors.New(resp.Status)
+	}
+
+	var eventsubResponse EventsubResponse
+	err = json.NewDecoder(resp.Body).Decode(&eventsubResponse)
+	if err != nil {
+		return "", err
+	}
+
+	return eventsubResponse.Data[0].Id, nil
+}
+
+func deleteMessageSub(auth Authentication, id string) error {
+	req, err := http.NewRequest("DELETE", "https://api.twitch.tv/helix/eventsub/subscriptions", nil)
+	if err != nil {
+		return err
+	}
+
+	q := req.URL.Query()
+	q.Add("id", id)
+	req.URL.RawQuery = q.Encode()
+
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Client-Id", auth.ClientId)
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", auth.AccessToken))
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != 204 {
 		return errors.New(resp.Status)
 	}
 

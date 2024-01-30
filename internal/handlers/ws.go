@@ -72,7 +72,7 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 
 	cond := twitch.NewCondition(channelId, s.UserId)
 	conn := make(chan twitch.Event)
-	id := twitch.ReadChat(auth, cond, conn)
+	id := twitch.Join(auth, cond, conn)
 
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -80,8 +80,10 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	done := make(chan bool)
 	c.SetCloseHandler(func(code int, text string) error {
-		twitch.RemoveConnection(cond.BroadcasterUserId, id)
+		twitch.Part(cond.BroadcasterUserId, id)
+		done <- true
 		return nil
 	})
 
@@ -98,17 +100,21 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}()
 
 	for {
-
-		event := <-conn
-		var templateBuffer bytes.Buffer
-		if handler.msgTemplate.Execute(&templateBuffer, NewMessageData(event)); err != nil {
-			log.Println(err)
+		select {
+		case <-done:
 			return
-		}
+		case event := <-conn:
+			var templateBuffer bytes.Buffer
+			if handler.msgTemplate.Execute(&templateBuffer, NewMessageData(event)); err != nil {
+				log.Println(err)
+				return
+			}
 
-		if c.WriteMessage(websocket.TextMessage, templateBuffer.Bytes()); err != nil {
-			log.Println(err)
-			return
+			if c.WriteMessage(websocket.TextMessage, templateBuffer.Bytes()); err != nil {
+				log.Println(err)
+				return
+			}
+		default:
 		}
 	}
 }
