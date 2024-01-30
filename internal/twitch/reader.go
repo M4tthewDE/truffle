@@ -175,7 +175,6 @@ func (r *readerManager) run() {
 					delete(r.readers, channelId)
 				}
 			}
-		default:
 		}
 	}
 }
