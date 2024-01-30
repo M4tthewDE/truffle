@@ -44,6 +44,10 @@ type Event struct {
 	Color               string      `json:"color"`
 	ModeratorUserLogin  string      `json:"moderator_user_login"`
 	UserLogin           string      `json:"user_login"`
+	IsPermanent         bool        `json:"is_permanent"`
+	BannedAt            time.Time   `json:"banned_at"`
+	EndsAt              time.Time   `json:"ends_at"`
+	Reason              string      `json:"reason"`
 }
 
 type ChatMessage struct {

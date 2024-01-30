@@ -17,6 +17,7 @@ import (
 type WsChatHandler struct {
 	msgTemplate   *template.Template
 	unbanTemplate *template.Template
+	banTemplate   *template.Template
 }
 
 func NewWsChatHandler() (*WsChatHandler, error) {
@@ -29,9 +30,15 @@ func NewWsChatHandler() (*WsChatHandler, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	banTemplate, err := template.ParseFiles("resources/ban_message.html")
+	if err != nil {
+		return nil, err
+	}
 	return &WsChatHandler{
 		msgTemplate:   msgTemplate,
 		unbanTemplate: unbanTemplate,
+		banTemplate:   banTemplate,
 	}, nil
 }
 
@@ -62,6 +69,26 @@ func NewUnbanMessageData(payload twitch.Payload) UnbanMessageData {
 		CreatedAt:          time.Now().Format(time.TimeOnly),
 		ModeratorUserLogin: payload.Event.ModeratorUserLogin,
 		UserLogin:          payload.Event.UserLogin,
+	}
+}
+
+type BanMessageData struct {
+	ModeratorUserLogin string
+	UserLogin          string
+	IsPermanent        bool
+	BannedAt           string
+	Duration           string
+	Reason             string
+}
+
+func NewBanMessageData(payload twitch.Payload) BanMessageData {
+	return BanMessageData{
+		ModeratorUserLogin: payload.Event.ModeratorUserLogin,
+		UserLogin:          payload.Event.UserLogin,
+		IsPermanent:        payload.Event.IsPermanent,
+		BannedAt:           payload.Event.BannedAt.Format(time.TimeOnly),
+		Duration:           payload.Event.EndsAt.Sub(payload.Event.BannedAt).String(),
+		Reason:             payload.Event.Reason,
 	}
 }
 
@@ -133,6 +160,11 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 			}
 		case twitch.UNBAN_TYPE:
 			if handler.unbanTemplate.Execute(&templateBuffer, NewUnbanMessageData(payload)); err != nil {
+				log.Println(err)
+				return
+			}
+		case twitch.BAN_TYPE:
+			if handler.banTemplate.Execute(&templateBuffer, NewBanMessageData(payload)); err != nil {
 				log.Println(err)
 				return
 			}

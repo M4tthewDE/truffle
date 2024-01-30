@@ -1,0 +1,13 @@
+<div id="messages" hx-swap-oob="beforeend">
+	<div id"msg">
+		<span style="color:gray">{{.BannedAt}} </span>
+		{{if .IsPermanent}}
+		<span style="color:gray">{{.ModeratorUserLogin}} permanently banned {{.UserLogin}}:
+			"{{.Reason}}".</span>
+		{{else}}
+		<span style="color:gray">{{.ModeratorUserLogin}} timed out {{.UserLogin}} for {{.Duration}}:
+			"{{.Reason}}".</span>
+		{{end}}
+		<br>
+	</div>
+</div>
