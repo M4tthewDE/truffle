@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"log"
 	"net/http"
 	"text/template"
@@ -72,32 +73,33 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 
 	cond := twitch.NewCondition(channelId, s.UserId)
 	conn := make(chan twitch.Event)
-	id := twitch.Join(auth, cond, conn)
+	ctx, cancel := context.WithCancel(context.Background())
+	go twitch.Read(auth, cond, conn, ctx)
 
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
+		cancel()
 		return
 	}
 
 	c.SetCloseHandler(func(code int, text string) error {
-		twitch.Part(cond.BroadcasterUserId, id)
+		cancel()
 		return nil
 	})
 
 	defer c.Close()
 
 	// need to read so that we can receive close messages to the callback
-	go func() {
+	go func(cancel context.CancelFunc) {
 		for {
 			_, _, err := c.ReadMessage()
 			if err != nil {
-				log.Println(err)
-				twitch.Part(cond.BroadcasterUserId, id)
+				cancel()
 				return
 			}
 		}
-	}()
+	}(cancel)
 
 	for {
 		event, ok := <-conn

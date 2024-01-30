@@ -7,7 +7,6 @@ import (
 	"github.com/m4tthewde/truffle/internal/config"
 	"github.com/m4tthewde/truffle/internal/handlers"
 	"github.com/m4tthewde/truffle/internal/session"
-	"github.com/m4tthewde/truffle/internal/twitch"
 )
 
 func main() {
@@ -19,8 +18,6 @@ func main() {
 
 	session.Init()
 	go session.CleanupTicker()
-
-	twitch.Init()
 
 	rootHandler, err := handlers.NewRootHandler()
 	if err != nil {
