@@ -91,6 +91,9 @@ func handleMsg(wsMsg websocketMessage, auth Authentication, cond Condition, wsCh
 		log.Println("revocation")
 	}
 
-	wsChan <- msg.Payload.Event
+	if msg.Metadata.MessageType == "notification" {
+		wsChan <- msg.Payload.Event
+	}
+
 	return nil
 }
