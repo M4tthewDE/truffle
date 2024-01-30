@@ -34,7 +34,12 @@ func Read(auth Authentication, cond Condition, wsChan chan Event, ctx context.Co
 				return
 			}
 
-			handleMsg(data, auth, cond, wsChan)
+			err = handleMsg(data, auth, cond, wsChan)
+			if err != nil {
+				log.Println(err)
+				close(wsChan)
+				return
+			}
 		}
 
 	}
