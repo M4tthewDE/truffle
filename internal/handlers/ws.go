@@ -92,6 +92,8 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		for {
 			_, _, err := c.ReadMessage()
 			if err != nil {
+				log.Println(err)
+				twitch.Part(cond.BroadcasterUserId, id)
 				return
 			}
 		}
