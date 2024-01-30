@@ -72,6 +72,7 @@ func (r *reader) read(auth Authentication, condition Condition) {
 			if wsMsg.err != nil {
 				log.Println(err)
 				cancel()
+				return
 			}
 
 			var msg Message
@@ -79,6 +80,7 @@ func (r *reader) read(auth Authentication, condition Condition) {
 			if err != nil {
 				log.Println(err)
 				cancel()
+				return
 			}
 
 			if msg.Metadata.MessageType == "session_welcome" {
@@ -86,6 +88,7 @@ func (r *reader) read(auth Authentication, condition Condition) {
 				if err != nil {
 					log.Println(err)
 					cancel()
+					return
 				}
 			}
 
