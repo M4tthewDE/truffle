@@ -9,12 +9,6 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type websocketMessage struct {
-	messageType int
-	data        []byte
-	err         error
-}
-
 func Read(auth Authentication, cond Condition, wsChan chan Event, ctx context.Context) {
 	u := url.URL{Scheme: "wss", Host: "eventsub.wss.twitch.tv", Path: "/ws"}
 
@@ -26,50 +20,29 @@ func Read(auth Authentication, cond Condition, wsChan chan Event, ctx context.Co
 
 	defer c.Close()
 
-	msgChan := make(chan websocketMessage)
-
-	ctx, cancel := context.WithCancel(ctx)
-	go func(ctx context.Context) {
-		for {
-			select {
-			case <-ctx.Done():
-				log.Printf("Parted %s\n", cond.BroadcasterUserId)
-				close(msgChan)
+	for {
+		select {
+		case <-ctx.Done():
+			log.Printf("Parted %s\n", cond.BroadcasterUserId)
+			close(wsChan)
+			return
+		default:
+			_, data, err := c.ReadMessage()
+			if err != nil {
+				log.Println(err)
+				close(wsChan)
 				return
-			default:
-				messageType, message, err := c.ReadMessage()
-				msgChan <- websocketMessage{
-					messageType: messageType,
-					data:        message,
-					err:         err,
-				}
 			}
 
+			handleMsg(data, auth, cond, wsChan)
 		}
-	}(ctx)
 
-	for {
-		wsMsg, ok := <-msgChan
-		if !ok {
-			cancel()
-			return
-		}
-		err := handleMsg(wsMsg, auth, cond, wsChan)
-		if err != nil {
-			log.Println(err)
-			cancel()
-			return
-		}
 	}
 }
 
-func handleMsg(wsMsg websocketMessage, auth Authentication, cond Condition, wsChan chan Event) error {
-	if wsMsg.err != nil {
-		return wsMsg.err
-	}
-
+func handleMsg(data []byte, auth Authentication, cond Condition, wsChan chan Event) error {
 	var msg Message
-	err := json.Unmarshal(wsMsg.data, &msg)
+	err := json.Unmarshal(data, &msg)
 	if err != nil {
 		return err
 	}
