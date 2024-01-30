@@ -29,7 +29,7 @@ type websocketMessage struct {
 	err         error
 }
 
-func (r *reader) read(auth Authentication, condition Condition) {
+func (r *reader) read(auth Authentication, cond Condition) {
 	u := url.URL{Scheme: "wss", Host: "eventsub.wss.twitch.tv", Path: "/ws"}
 
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
@@ -47,7 +47,7 @@ func (r *reader) read(auth Authentication, condition Condition) {
 		for {
 			select {
 			case <-ctx.Done():
-				log.Printf("Parted %s\n", condition.BroadcasterUserId)
+				log.Printf("Parted %s\n", cond.BroadcasterUserId)
 				close(msgChan)
 				return
 			default:
@@ -69,46 +69,47 @@ func (r *reader) read(auth Authentication, condition Condition) {
 				cancel()
 				return
 			}
-			if wsMsg.err != nil {
-				log.Println(err)
-				cancel()
-				return
-			}
-
-			var msg Message
-			err = json.Unmarshal(wsMsg.data, &msg)
+			err := r.handleMsg(wsMsg, auth, cond)
 			if err != nil {
 				log.Println(err)
-				cancel()
-				return
 			}
-
-			if msg.Metadata.MessageType == "session_welcome" {
-				_, err := createMessageSub(auth, msg.Payload.Session.Id, condition)
-				if err != nil {
-					log.Println(err)
-					cancel()
-					return
-				}
-			}
-
-			if msg.Metadata.MessageType == "session_reconnect" {
-				// TODO: implement reconnect logic
-				log.Println("session_reconnect")
-			}
-
-			if msg.Metadata.MessageType == "revocation" {
-				// TODO: what do we do in this case?
-				log.Println("revocation")
-			}
-
-			r.eventChan <- msg.Payload.Event
 		case <-r.partChan:
-			log.Printf("Parting %s", condition.BroadcasterUserId)
+			log.Printf("Parting %s", cond.BroadcasterUserId)
 			cancel()
 		}
 	}
+}
 
+func (r *reader) handleMsg(wsMsg websocketMessage, auth Authentication, cond Condition) error {
+	if wsMsg.err != nil {
+		return wsMsg.err
+	}
+
+	var msg Message
+	err := json.Unmarshal(wsMsg.data, &msg)
+	if err != nil {
+		return err
+	}
+
+	if msg.Metadata.MessageType == "session_welcome" {
+		_, err := createMessageSub(auth, msg.Payload.Session.Id, cond)
+		if err != nil {
+			return err
+		}
+	}
+
+	if msg.Metadata.MessageType == "session_reconnect" {
+		// TODO: implement reconnect logic
+		log.Println("session_reconnect")
+	}
+
+	if msg.Metadata.MessageType == "revocation" {
+		// TODO: what do we do in this case?
+		log.Println("revocation")
+	}
+
+	r.eventChan <- msg.Payload.Event
+	return nil
 }
 
 type joinRequest struct {
