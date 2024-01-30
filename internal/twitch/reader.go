@@ -37,7 +37,6 @@ func Read(auth Authentication, cond Condition, wsChan chan Event, ctx context.Co
 				close(msgChan)
 				return
 			default:
-				// TODO: this blocks till there are messages right? does the cancel work then?
 				messageType, message, err := c.ReadMessage()
 				msgChan <- websocketMessage{
 					messageType: messageType,
@@ -58,6 +57,8 @@ func Read(auth Authentication, cond Condition, wsChan chan Event, ctx context.Co
 		err := handleMsg(wsMsg, auth, cond, wsChan)
 		if err != nil {
 			log.Println(err)
+			cancel()
+			return
 		}
 	}
 }

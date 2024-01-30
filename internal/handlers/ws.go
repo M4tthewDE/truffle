@@ -83,14 +83,8 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	c.SetCloseHandler(func(code int, text string) error {
-		cancel()
-		return nil
-	})
-
 	defer c.Close()
 
-	// need to read so that we can receive close messages to the callback
 	go func(cancel context.CancelFunc) {
 		for {
 			_, _, err := c.ReadMessage()
