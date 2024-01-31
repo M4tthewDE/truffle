@@ -7,12 +7,24 @@
 	}
 </style>
 
-
 <script>
+	let autoScroll = true;
+	document.getElementById("chat-room-div").addEventListener("wheel", function (event) {
+		autoScroll = false;
+	});
+
+	function resumeAutoscroll() {
+		const container = document.getElementById("chat-room-div");
+		container.scrollTop = container.scrollHeight;
+		autoScroll = true;
+	}
+
 	htmx.on("htmx:oobAfterSwap", function (evt) {
 		if (evt.detail.target.attributes["id"].nodeValue === "messages") {
-			const container = document.getElementById("chat-room-div");
-			container.scrollTop = container.scrollHeight;
+			if (autoScroll) {
+				const container = document.getElementById("chat-room-div");
+				container.scrollTop = container.scrollHeight;
+			}
 
 			const messages = document.getElementById("messages");
 			const children = messages.children;
@@ -26,7 +38,8 @@
 	});
 </script>
 
-#{{.Channel}}
+<span style="color:gray;padding-right:10px">#{{.Channel}}</span><button onclick="resumeAutoscroll()">Resume
+	Autoscroll</button>
 <div id="chat-room-div" class="chat-room-div" hx-ext="ws" ws-connect="/chat/messages?channel={{.Channel}}">
 	<div id="messages"></div>
 </div>
