@@ -8,24 +8,24 @@ import (
 	"github.com/m4tthewde/truffle/internal/session"
 )
 
-type ChatBoxHandler struct {
-	chatBoxTemplate *template.Template
+type ChatRoomHandler struct {
+	chatRoomTemplate *template.Template
 }
 
-func NewChatBoxHandler() (*ChatBoxHandler, error) {
-	chatBoxTemplate, err := template.ParseFiles("resources/chatbox.html")
+func NewChatRoomHandler() (*ChatRoomHandler, error) {
+	chatRoomTemplate, err := template.ParseFiles("resources/chatroom.html")
 	if err != nil {
 		return nil, err
 	}
 
-	return &ChatBoxHandler{chatBoxTemplate: chatBoxTemplate}, nil
+	return &ChatRoomHandler{chatRoomTemplate: chatRoomTemplate}, nil
 }
 
-type ChatBoxData struct {
+type ChatRoomData struct {
 	Channel string
 }
 
-func (handler *ChatBoxHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (handler *ChatRoomHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -33,17 +33,20 @@ func (handler *ChatBoxHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 
 	_, ok, err := session.SessionFromRequest(r)
 	if err != nil {
+		log.Println(err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	if !ok {
+		log.Println(err)
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 
 	err = r.ParseForm()
 	if err != nil {
+		log.Println(err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -56,7 +59,7 @@ func (handler *ChatBoxHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 
 	channel := channels[0]
 
-	err = handler.chatBoxTemplate.Execute(w, ChatBoxData{Channel: channel})
+	err = handler.chatRoomTemplate.Execute(w, ChatRoomData{Channel: channel})
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)

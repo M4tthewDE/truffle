@@ -29,7 +29,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	chatBoxHandler, err := handlers.NewChatBoxHandler()
+	chatRoomHandler, err := handlers.NewChatRoomHandler()
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -46,7 +46,7 @@ func main() {
 
 	http.Handle("/", rootHandler)
 	http.Handle("/chat", chatHandler)
-	http.Handle("/chatbox", chatBoxHandler)
+	http.Handle("/chatroom", chatRoomHandler)
 	http.Handle("/chat/messages", wsChatHandler)
 	http.Handle("/settings", settingsHandler)
 	http.HandleFunc("/login", handlers.LoginHandler)
