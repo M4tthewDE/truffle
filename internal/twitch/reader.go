@@ -54,7 +54,9 @@ type ChatMessage struct {
 	Text string `json:"text"`
 }
 
-func Read(auth Authentication, cond Condition, wsChan chan Payload, ctx context.Context) {
+func Read(accessToken string, cond Condition, wsChan chan Payload, ctx context.Context) {
+	defer close(wsChan)
+
 	log.Printf("Joining %s as user %s\n", cond.BroadcasterUserId, cond.UserId)
 	u := url.URL{Scheme: "wss", Host: "eventsub.wss.twitch.tv", Path: "/ws"}
 
@@ -70,27 +72,24 @@ func Read(auth Authentication, cond Condition, wsChan chan Payload, ctx context.
 		select {
 		case <-ctx.Done():
 			log.Printf("Parted %s\n", cond.BroadcasterUserId)
-			close(wsChan)
 			return
 		default:
 			_, data, err := c.ReadMessage()
 			if err != nil {
 				log.Println(err)
-				close(wsChan)
 				return
 			}
 
-			err = handleMsg(data, auth, cond, wsChan)
+			err = handleMsg(data, accessToken, cond, wsChan)
 			if err != nil {
 				log.Println(err)
-				close(wsChan)
 				return
 			}
 		}
 	}
 }
 
-func handleMsg(data []byte, auth Authentication, cond Condition, wsChan chan Payload) error {
+func handleMsg(data []byte, accessToken string, cond Condition, wsChan chan Payload) error {
 	var msg Message
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
@@ -98,12 +97,12 @@ func handleMsg(data []byte, auth Authentication, cond Condition, wsChan chan Pay
 	}
 
 	if msg.Metadata.MessageType == "session_welcome" {
-		_, err := createEventSub(auth, msg.Payload.Session.Id, cond, MESSAGE_TYPE)
+		_, err := createEventSub(accessToken, msg.Payload.Session.Id, cond, MESSAGE_TYPE)
 		if err != nil {
 			return err
 		}
 
-		_, err = createEventSub(auth, msg.Payload.Session.Id, cond, BAN_TYPE)
+		_, err = createEventSub(accessToken, msg.Payload.Session.Id, cond, BAN_TYPE)
 		if err != nil {
 			if errors.Is(err, ForbiddenError) {
 				log.Printf("User %s is not mod in channel %s\n", cond.UserId, cond.BroadcasterUserId)
@@ -112,7 +111,7 @@ func handleMsg(data []byte, auth Authentication, cond Condition, wsChan chan Pay
 			}
 		}
 
-		_, err = createEventSub(auth, msg.Payload.Session.Id, cond, UNBAN_TYPE)
+		_, err = createEventSub(accessToken, msg.Payload.Session.Id, cond, UNBAN_TYPE)
 		if err != nil {
 			if errors.Is(err, ForbiddenError) {
 				log.Printf("User %s is not mod in channel %s\n", cond.UserId, cond.BroadcasterUserId)

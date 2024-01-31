@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+
+	"github.com/m4tthewde/truffle/internal/config"
 )
 
 type Condition struct {
@@ -17,18 +19,6 @@ func NewCondition(broadcasterUserId string, userId string) Condition {
 	return Condition{
 		BroadcasterUserId: broadcasterUserId,
 		UserId:            userId,
-	}
-}
-
-type Authentication struct {
-	ClientId    string
-	AccessToken string
-}
-
-func NewAuthentication(clientId string, accessToken string) Authentication {
-	return Authentication{
-		ClientId:    clientId,
-		AccessToken: accessToken,
 	}
 }
 
@@ -48,7 +38,7 @@ const (
 
 var ForbiddenError = errors.New("403 Forbidden")
 
-func createEventSub(authentication Authentication, sessionId string, condition Condition, subType string) (string, error) {
+func createEventSub(accessToken string, sessionId string, condition Condition, subType string) (string, error) {
 	transport := make(map[string]string)
 	transport["method"] = "websocket"
 	transport["session_id"] = sessionId
@@ -71,8 +61,8 @@ func createEventSub(authentication Authentication, sessionId string, condition C
 
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Client-Id", authentication.ClientId)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", authentication.AccessToken))
+	req.Header.Add("Client-Id", config.Conf.ClientId)
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -96,7 +86,7 @@ func createEventSub(authentication Authentication, sessionId string, condition C
 	return eventsubResponse.Data[0].Id, nil
 }
 
-func deleteMessageSub(auth Authentication, id string) error {
+func deleteMessageSub(accessToken string, id string) error {
 	req, err := http.NewRequest("DELETE", "https://api.twitch.tv/helix/eventsub/subscriptions", nil)
 	if err != nil {
 		return err
@@ -108,8 +98,8 @@ func deleteMessageSub(auth Authentication, id string) error {
 
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Client-Id", auth.ClientId)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", auth.AccessToken))
+	req.Header.Add("Client-Id", config.Conf.ClientId)
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -131,7 +121,7 @@ type ChannelData struct {
 	Id string `json:"id"`
 }
 
-func GetChannelId(authentication Authentication, channel string) (string, error) {
+func GetChannelId(accessToken string, channel string) (string, error) {
 	req, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users", nil)
 	if err != nil {
 		return "", err
@@ -143,8 +133,8 @@ func GetChannelId(authentication Authentication, channel string) (string, error)
 
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Client-Id", authentication.ClientId)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", authentication.AccessToken))
+	req.Header.Add("Client-Id", config.Conf.ClientId)
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

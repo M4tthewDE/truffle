@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/m4tthewde/truffle/internal/config"
 	"github.com/m4tthewde/truffle/internal/session"
 	"github.com/m4tthewde/truffle/internal/twitch"
 )
@@ -107,29 +106,21 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	channels, ok := r.URL.Query()["channel"]
-	if !ok || len(channels) == 0 {
-		w.WriteHeader(http.StatusForbidden)
-		return
-	}
-
-	auth := twitch.NewAuthentication(config.Conf.ClientId, s.AccessToken)
-
-	channelId, err := twitch.GetChannelId(auth, channels[0])
+	channelId, err := twitch.GetChannelId(s.AccessToken, r.FormValue("channel"))
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	cond := twitch.NewCondition(channelId, s.UserId)
-	conn := make(chan twitch.Payload)
 	ctx, cancel := context.WithCancel(context.Background())
-	go twitch.Read(auth, cond, conn, ctx)
+	defer cancel()
+
+	conn := make(chan twitch.Payload)
+	go twitch.Read(s.AccessToken, twitch.NewCondition(channelId, s.UserId), conn, ctx)
 
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
-		cancel()
 		return
 	}
 
@@ -148,6 +139,7 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	for {
 		payload, ok := <-conn
 		if !ok {
+			log.Println("Reader closed connection")
 			return
 		}
 
