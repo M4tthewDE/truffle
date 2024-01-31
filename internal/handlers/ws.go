@@ -14,9 +14,10 @@ import (
 )
 
 type WsChatHandler struct {
-	msgTemplate   *template.Template
-	unbanTemplate *template.Template
-	banTemplate   *template.Template
+	msgTemplate     *template.Template
+	unbanTemplate   *template.Template
+	banTemplate     *template.Template
+	connectTemplate *template.Template
 }
 
 func NewWsChatHandler() (*WsChatHandler, error) {
@@ -34,10 +35,17 @@ func NewWsChatHandler() (*WsChatHandler, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	connectTemplate, err := template.ParseFiles("resources/connect.html")
+	if err != nil {
+		return nil, err
+	}
+
 	return &WsChatHandler{
-		msgTemplate:   msgTemplate,
-		unbanTemplate: unbanTemplate,
-		banTemplate:   banTemplate,
+		msgTemplate:     msgTemplate,
+		unbanTemplate:   unbanTemplate,
+		banTemplate:     banTemplate,
+		connectTemplate: connectTemplate,
 	}, nil
 }
 
@@ -128,6 +136,17 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}
 
 	defer c.Close()
+
+	var connectBuffer bytes.Buffer
+	if handler.connectTemplate.Execute(&connectBuffer, nil); err != nil {
+		log.Println(err)
+		return
+	}
+
+	if c.WriteMessage(websocket.TextMessage, connectBuffer.Bytes()); err != nil {
+		log.Println(err)
+		return
+	}
 
 	go func(cancel context.CancelFunc) {
 		for {
