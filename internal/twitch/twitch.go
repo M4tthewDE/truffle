@@ -2,6 +2,7 @@ package twitch
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -121,8 +122,8 @@ type ChannelData struct {
 	Id string `json:"id"`
 }
 
-func GetChannelId(accessToken string, channel string) (string, error) {
-	req, err := http.NewRequest("GET", "https://api.twitch.tv/helix/users", nil)
+func GetChannelId(ctx context.Context, accessToken string, channel string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", "https://api.twitch.tv/helix/users", nil)
 	if err != nil {
 		return "", err
 	}
