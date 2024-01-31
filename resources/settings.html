@@ -1,6 +1,3 @@
-<h2>Settings</h2>
-<button id="logout-btn" hx-post="/logout" hx-trigger="click">Logout</button>
-
 <script>
 	htmx.on("htmx:afterRequest", function (evt) {
 		if (evt.detail.target.attributes["id"].nodeValue === "logout-btn") {
@@ -9,3 +6,6 @@
 		}
 	});
 </script>
+
+<h2>Settings</h2>
+<button id="logout-btn" hx-post="/logout" hx-trigger="click">Logout</button>

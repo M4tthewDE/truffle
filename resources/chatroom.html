@@ -7,10 +7,6 @@
 	}
 </style>
 
-#{{.Channel}}
-<div id="chat-room-div" class="chat-room-div" hx-ext="ws" ws-connect="/chat/messages?channel={{.Channel}}">
-	<div id="messages"></div>
-</div>
 
 <script>
 	htmx.on("htmx:oobAfterSwap", function (evt) {
@@ -29,3 +25,8 @@
 		}
 	});
 </script>
+
+#{{.Channel}}
+<div id="chat-room-div" class="chat-room-div" hx-ext="ws" ws-connect="/chat/messages?channel={{.Channel}}">
+	<div id="messages"></div>
+</div>
