@@ -1,9 +1,13 @@
 package handlers
 
 import (
+	"context"
+	"log"
 	"net/http"
+	"time"
 
 	"github.com/m4tthewde/truffle/internal/session"
+	"github.com/m4tthewde/truffle/internal/twitch"
 )
 
 func LogoutHandler(w http.ResponseWriter, r *http.Request) {
@@ -14,6 +18,7 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 
 	s, ok, err := session.SessionFromRequest(r)
 	if err != nil {
+		log.Println(err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -24,5 +29,16 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	session.DeleteSession(s)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	err = twitch.RevokeToken(ctx, s.AccessToken)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	w.WriteHeader(http.StatusNoContent)
 }

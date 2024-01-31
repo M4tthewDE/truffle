@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/m4tthewde/truffle/internal/config"
 )
@@ -229,4 +231,28 @@ func ValidateToken(accessToken string) (*ValidationResponse, error) {
 	}
 
 	return &userInfo, nil
+}
+
+func RevokeToken(ctx context.Context, accessToken string) error {
+	data := url.Values{}
+	data.Set("client_id", config.Conf.ClientId)
+	data.Set("token", accessToken)
+
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://id.twitch.tv/oauth2/revoke", strings.NewReader(data.Encode()))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != 200 {
+		return errors.New(resp.Status)
+	}
+
+	return nil
 }
