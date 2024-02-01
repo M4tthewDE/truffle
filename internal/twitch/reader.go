@@ -104,7 +104,7 @@ func handleMsg(data []byte, accessToken string, cond Condition, wsChan chan Payl
 
 		_, err = createEventSub(accessToken, msg.Payload.Session.Id, cond, BAN_TYPE)
 		if err != nil {
-			if errors.Is(err, ForbiddenError) {
+			if errors.Is(err, ErrForbidden) {
 				log.Printf("User %s is not mod in channel %s\n", cond.UserId, cond.BroadcasterUserId)
 			} else {
 				return err
@@ -113,7 +113,7 @@ func handleMsg(data []byte, accessToken string, cond Condition, wsChan chan Payl
 
 		_, err = createEventSub(accessToken, msg.Payload.Session.Id, cond, UNBAN_TYPE)
 		if err != nil {
-			if errors.Is(err, ForbiddenError) {
+			if errors.Is(err, ErrForbidden) {
 				log.Printf("User %s is not mod in channel %s\n", cond.UserId, cond.BroadcasterUserId)
 			} else {
 				return err

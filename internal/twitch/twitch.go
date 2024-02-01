@@ -39,7 +39,7 @@ const (
 	UNBAN_TYPE   = "channel.unban"
 )
 
-var ForbiddenError = errors.New("403 Forbidden")
+var ErrForbidden = errors.New("403 Forbidden")
 
 func createEventSub(accessToken string, sessionId string, condition Condition, subType string) (string, error) {
 	transport := make(map[string]string)
@@ -73,7 +73,7 @@ func createEventSub(accessToken string, sessionId string, condition Condition, s
 	}
 
 	if resp.StatusCode == 403 {
-		return "", ForbiddenError
+		return "", ErrForbidden
 	}
 
 	if resp.StatusCode != 202 {
@@ -87,33 +87,6 @@ func createEventSub(accessToken string, sessionId string, condition Condition, s
 	}
 
 	return eventsubResponse.Data[0].Id, nil
-}
-
-func deleteMessageSub(accessToken string, id string) error {
-	req, err := http.NewRequest("DELETE", "https://api.twitch.tv/helix/eventsub/subscriptions", nil)
-	if err != nil {
-		return err
-	}
-
-	q := req.URL.Query()
-	q.Add("id", id)
-	req.URL.RawQuery = q.Encode()
-
-	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Client-Id", config.Conf.ClientId)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-
-	if resp.StatusCode != 204 {
-		return errors.New(resp.Status)
-	}
-
-	return nil
 }
 
 type ChannelResponse struct {
