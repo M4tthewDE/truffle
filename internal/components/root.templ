@@ -1,0 +1,39 @@
+package components
+
+templ Root(loggedIn bool, authUri templ.SafeURL) {
+	<!DOCTYPE html>
+	<script src="https://unpkg.com/htmx.org@1.9.10"></script>
+	<script src="https://unpkg.com/htmx.org/dist/ext/ws.js"></script>
+	<script>
+		function storeFragmentInCookie() {
+			var fragment = window.location.hash;
+
+			if (fragment) {
+				fragment = fragment.substring(1);
+
+				var expiryDate = new Date();
+				expiryDate.setTime(expiryDate.getTime() + (7 * 24 * 60 * 60 * 1000));
+				var expires = "expires=" + expiryDate.toUTCString();
+				document.cookie = "sessionid=" + fragment + ";" + expires + ";path=/;SameSite=Strict";
+
+				window.location.href = "/"
+			}
+		}
+
+		window.onload = storeFragmentInCookie;
+
+		let autoScroll = true;
+	</script>
+	<html>
+		<body>
+			<h1>Truffle</h1>
+			if !loggedIn {
+				<a href={ authUri }>Login</a>
+			} else {
+				<button hx-get="/chat" hx-trigger="click" hx-target="#main-div">Chat</button>
+				<button hx-get="/settings" hx-trigger="click" hx-target="#main-div">Settings</button>
+				<div id="main-div"></div>
+			}
+		</body>
+	</html>
+}

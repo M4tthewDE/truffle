@@ -19,11 +19,6 @@ func main() {
 	session.Init()
 	go session.CleanupTicker()
 
-	rootHandler, err := handlers.NewRootHandler()
-	if err != nil {
-		log.Fatalln(err)
-	}
-
 	chatHandler, err := handlers.NewChatHandler()
 	if err != nil {
 		log.Fatalln(err)
@@ -44,7 +39,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	http.Handle("/", rootHandler)
+	http.HandleFunc("/", handlers.RootHandler)
 	http.Handle("/chat", chatHandler)
 	http.Handle("/chatroom", chatRoomHandler)
 	http.Handle("/chat/messages", wsChatHandler)
