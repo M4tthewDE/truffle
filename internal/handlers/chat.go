@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"log"
 	"net/http"
 
@@ -28,7 +27,7 @@ func ChatHandler(w http.ResponseWriter, r *http.Request) {
 
 	component := components.Chat()
 
-	err = component.Render(context.Background(), w)
+	err = component.Render(r.Context(), w)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)

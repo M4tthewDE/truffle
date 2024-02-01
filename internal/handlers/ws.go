@@ -29,7 +29,7 @@ func WsChatHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
 	channelID, err := twitch.GetChannelID(ctx, s.AccessToken, r.FormValue("channel"))
@@ -38,7 +38,7 @@ func WsChatHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel = context.WithCancel(context.Background())
+	ctx, cancel = context.WithCancel(r.Context())
 	defer cancel()
 
 	conn := make(chan twitch.Payload)

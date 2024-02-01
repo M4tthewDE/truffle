@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"log"
 	"net/http"
 
@@ -42,7 +41,7 @@ func ChatRoomHandler(w http.ResponseWriter, r *http.Request) {
 		templ.Attributes{"ws-connect": "/chat/messages?channel=" + channel},
 	)
 
-	err = component.Render(context.Background(), w)
+	err = component.Render(r.Context(), w)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)

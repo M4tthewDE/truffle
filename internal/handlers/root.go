@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -25,7 +24,7 @@ func RootHandler(w http.ResponseWriter, r *http.Request) {
 	authURI := fmt.Sprintf(authURITemplate, config.Conf.ClientID, config.Conf.URL)
 	component := components.Root(loggedIn, templ.URL(authURI))
 
-	err = component.Render(context.Background(), w)
+	err = component.Render(r.Context(), w)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
