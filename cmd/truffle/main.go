@@ -19,19 +19,9 @@ func main() {
 	session.Init()
 	go session.CleanupTicker()
 
-	chatHandler, err := handlers.NewChatHandler()
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	chatRoomHandler, err := handlers.NewChatRoomHandler()
-	if err != nil {
-		log.Fatalln(err)
-	}
-
 	http.HandleFunc("/", handlers.RootHandler)
-	http.Handle("/chat", chatHandler)
-	http.Handle("/chatroom", chatRoomHandler)
+	http.HandleFunc("/chat", handlers.ChatHandler)
+	http.HandleFunc("/chatroom", handlers.ChatRoomHandler)
 	http.HandleFunc("/chat/messages", handlers.WsChatHandler)
 	http.HandleFunc("/settings", handlers.SettingsHandler)
 	http.HandleFunc("/login", handlers.LoginHandler)

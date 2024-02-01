@@ -1,31 +1,16 @@
 package handlers
 
 import (
+	"context"
 	"log"
 	"net/http"
-	"text/template"
 
+	"github.com/a-h/templ"
+	"github.com/m4tthewde/truffle/internal/components"
 	"github.com/m4tthewde/truffle/internal/session"
 )
 
-type ChatRoomHandler struct {
-	chatRoomTemplate *template.Template
-}
-
-func NewChatRoomHandler() (*ChatRoomHandler, error) {
-	chatRoomTemplate, err := template.ParseFiles("resources/chatroom.html")
-	if err != nil {
-		return nil, err
-	}
-
-	return &ChatRoomHandler{chatRoomTemplate: chatRoomTemplate}, nil
-}
-
-type ChatRoomData struct {
-	Channel string
-}
-
-func (handler *ChatRoomHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func ChatRoomHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -51,15 +36,13 @@ func (handler *ChatRoomHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	channels, ok := r.Form["channel"]
-	if !ok || len(channels) == 0 {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
+	channel := r.FormValue("channel")
+	component := components.ChatRoom(
+		channel,
+		templ.Attributes{"ws-connect": "/chat/messages?channel=" + channel},
+	)
 
-	channel := channels[0]
-
-	err = handler.chatRoomTemplate.Execute(w, ChatRoomData{Channel: channel})
+	err = component.Render(context.Background(), w)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)

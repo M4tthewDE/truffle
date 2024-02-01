@@ -1,31 +1,15 @@
 package handlers
 
 import (
+	"context"
 	"log"
 	"net/http"
-	"text/template"
 
+	"github.com/m4tthewde/truffle/internal/components"
 	"github.com/m4tthewde/truffle/internal/session"
 )
 
-type ChatHandler struct {
-	chatTemplate *template.Template
-}
-
-func NewChatHandler() (*ChatHandler, error) {
-	chatTemplate, err := template.ParseFiles("resources/chat.html")
-	if err != nil {
-		return nil, err
-	}
-
-	return &ChatHandler{chatTemplate: chatTemplate}, nil
-}
-
-type ChatData struct {
-	SessionId string
-}
-
-func (handler *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func ChatHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -42,7 +26,9 @@ func (handler *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = handler.chatTemplate.Execute(w, nil)
+	component := components.Chat()
+
+	err = component.Render(context.Background(), w)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)

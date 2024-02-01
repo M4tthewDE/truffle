@@ -1,0 +1,59 @@
+package components
+
+templ Chat() {
+	<h2>Chat</h2>
+	<form class="channel-form" style="padding-bottom:20px" form>
+		<label for="channel">Channel</label>
+		<input id="channel" name="channel"/>
+		<input type="submit" value="Submit" hx-post="/chatroom" hx-triger="click" hx-target="#chat-room-container"/>
+	</form>
+	<div id="chat-room-container"></div>
+}
+
+templ ChatRoom(channel string, wsConnect templ.Attributes) {
+	<style>
+		.chat-room-div {
+			height: 400px;
+			overflow: auto;
+			border: 1px solid #ccc;
+			padding: 10px;
+		}
+	</style>
+	<script>
+		document.getElementById("chat-room-div").addEventListener("wheel", function (event) {
+			autoScroll = false;
+		});
+
+		function resumeAutoscroll() {
+			const container = document.getElementById("chat-room-div");
+			container.scrollTop = container.scrollHeight;
+			autoScroll = true;
+		}
+
+		htmx.on("htmx:oobAfterSwap", function (evt) {
+			if (evt.detail.target.attributes["id"].nodeValue === "messages") {
+				if (autoScroll) {
+					const container = document.getElementById("chat-room-div");
+					container.scrollTop = container.scrollHeight;
+				}
+
+				const messages = document.getElementById("messages");
+				const children = messages.children;
+				const limit = 500;
+				const excess = children.length - limit;
+
+				for (let i = 0; i < excess; i++) {
+					messages.removeChild(children[0])
+				}
+			}
+		});
+	</script>
+	<span style="color:gray;padding-right:10px">#{ channel }</span>
+	<button onclick="resumeAutoscroll()">
+		Resume
+		Autoscroll
+	</button>
+	<div id="chat-room-div" class="chat-room-div" hx-ext="ws" { wsConnect... }>
+		<div id="messages"></div>
+	</div>
+}
