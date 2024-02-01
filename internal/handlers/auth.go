@@ -15,7 +15,7 @@ import (
 type UserInfo struct {
 	AccessToken string
 	Login       string
-	UserId      string
+	UserID      string
 }
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
@@ -33,9 +33,9 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	login, err := twitch.GetToken(
 		params.Get("code"),
-		config.Conf.ClientId,
+		config.Conf.ClientID,
 		config.Conf.ClientSecret,
-		config.Conf.Url,
+		config.Conf.URL,
 	)
 	if err != nil {
 		log.Println(err)
@@ -50,8 +50,8 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sessionId := uuid.New()
-	s := session.NewSession(sessionId, login.AccessToken, validation.Login, validation.UserId)
+	sessionID := uuid.New()
+	s := session.NewSession(sessionID, login.AccessToken, validation.Login, validation.UserID)
 	session.AddSession(s)
-	http.Redirect(w, r, fmt.Sprintf("%s/#%s", config.Conf.Url, sessionId.String()), http.StatusFound)
+	http.Redirect(w, r, fmt.Sprintf("%s/#%s", config.Conf.URL, sessionID.String()), http.StatusFound)
 }

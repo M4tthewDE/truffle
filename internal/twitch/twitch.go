@@ -14,14 +14,14 @@ import (
 )
 
 type Condition struct {
-	BroadcasterUserId string `json:"broadcaster_user_id"`
-	UserId            string `json:"user_id"`
+	BroadcasterUserID string `json:"broadcaster_user_id"`
+	UserID            string `json:"user_id"`
 }
 
-func NewCondition(broadcasterUserId string, userId string) Condition {
+func NewCondition(broadcasterUserID string, userID string) Condition {
 	return Condition{
-		BroadcasterUserId: broadcasterUserId,
-		UserId:            userId,
+		BroadcasterUserID: broadcasterUserID,
+		UserID:            userID,
 	}
 }
 
@@ -30,21 +30,21 @@ type EventsubResponse struct {
 }
 
 type EventsubData struct {
-	Id string `json:"id"`
+	ID string `json:"id"`
 }
 
 const (
-	MESSAGE_TYPE = "channel.chat.message"
-	BAN_TYPE     = "channel.ban"
-	UNBAN_TYPE   = "channel.unban"
+	MessageType = "channel.chat.message"
+	BanType     = "channel.ban"
+	UnbanType   = "channel.unban"
 )
 
 var ErrForbidden = errors.New("403 Forbidden")
 
-func createEventSub(accessToken string, sessionId string, condition Condition, subType string) (string, error) {
+func createEventSub(accessToken string, sessionID string, condition Condition, subType string) (string, error) {
 	transport := make(map[string]string)
 	transport["method"] = "websocket"
-	transport["session_id"] = sessionId
+	transport["session_id"] = sessionID
 
 	body := make(map[string]interface{})
 	body["type"] = subType
@@ -64,7 +64,7 @@ func createEventSub(accessToken string, sessionId string, condition Condition, s
 
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Client-Id", config.Conf.ClientId)
+	req.Header.Add("Client-Id", config.Conf.ClientID)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
 
 	resp, err := http.DefaultClient.Do(req)
@@ -86,7 +86,7 @@ func createEventSub(accessToken string, sessionId string, condition Condition, s
 		return "", err
 	}
 
-	return eventsubResponse.Data[0].Id, nil
+	return eventsubResponse.Data[0].ID, nil
 }
 
 type ChannelResponse struct {
@@ -94,10 +94,10 @@ type ChannelResponse struct {
 }
 
 type ChannelData struct {
-	Id string `json:"id"`
+	ID string `json:"id"`
 }
 
-func GetChannelId(ctx context.Context, accessToken string, channel string) (string, error) {
+func GetChannelID(ctx context.Context, accessToken string, channel string) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", "https://api.twitch.tv/helix/users", nil)
 	if err != nil {
 		return "", err
@@ -109,7 +109,7 @@ func GetChannelId(ctx context.Context, accessToken string, channel string) (stri
 
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Client-Id", config.Conf.ClientId)
+	req.Header.Add("Client-Id", config.Conf.ClientID)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
 
 	resp, err := http.DefaultClient.Do(req)
@@ -127,16 +127,16 @@ func GetChannelId(ctx context.Context, accessToken string, channel string) (stri
 		return "", err
 	}
 
-	return channelResponse.Data[0].Id, nil
+	return channelResponse.Data[0].ID, nil
 }
 
 type TokenResponse struct {
 	AccessToken string `json:"access_token"`
 }
 
-func GetToken(code string, clientId string, clientSecret string, uri string) (*TokenResponse, error) {
+func GetToken(code string, clientID string, clientSecret string, uri string) (*TokenResponse, error) {
 	body := make(map[string]string)
-	body["client_id"] = clientId
+	body["client_id"] = clientID
 	body["client_secret"] = clientSecret
 	body["code"] = code
 	body["grant_type"] = "authorization_code"
@@ -174,7 +174,7 @@ func GetToken(code string, clientId string, clientSecret string, uri string) (*T
 }
 
 type ValidationResponse struct {
-	UserId string `json:"user_id"`
+	UserID string `json:"user_id"`
 	Login  string `json:"login"`
 }
 
@@ -208,7 +208,7 @@ func ValidateToken(accessToken string) (*ValidationResponse, error) {
 
 func RevokeToken(ctx context.Context, accessToken string) error {
 	data := url.Values{}
-	data.Set("client_id", config.Conf.ClientId)
+	data.Set("client_id", config.Conf.ClientID)
 	data.Set("token", accessToken)
 
 	req, err := http.NewRequestWithContext(ctx, "POST", "https://id.twitch.tv/oauth2/revoke", strings.NewReader(data.Encode()))

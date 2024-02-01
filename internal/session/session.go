@@ -30,29 +30,29 @@ func CleanupTicker() {
 }
 
 type Session struct {
-	Id          uuid.UUID
+	ID          uuid.UUID
 	Created     time.Time
 	AccessToken string
 	Login       string
-	UserId      string
+	UserID      string
 }
 
-func NewSession(id uuid.UUID, accessToken string, login string, userId string) Session {
+func NewSession(id uuid.UUID, accessToken string, login string, userID string) Session {
 	return Session{
-		Id:          id,
+		ID:          id,
 		Created:     time.Now(),
 		AccessToken: accessToken,
 		Login:       login,
-		UserId:      userId,
+		UserID:      userID,
 	}
 }
 
 func AddSession(session Session) {
-	sessions[session.Id] = session
+	sessions[session.ID] = session
 }
 
 func DeleteSession(session *Session) {
-	delete(sessions, session.Id)
+	delete(sessions, session.ID)
 }
 
 func SessionFromRequest(r *http.Request) (*Session, bool, error) {
@@ -66,12 +66,12 @@ func SessionFromRequest(r *http.Request) (*Session, bool, error) {
 		return nil, false, errors.New("invalid cookie format")
 	}
 
-	sessionId, err := uuid.Parse(splits[1])
+	sessionID, err := uuid.Parse(splits[1])
 	if err != nil {
 		return nil, false, err
 	}
 
-	s, ok := sessions[sessionId]
+	s, ok := sessions[sessionID]
 	if !ok {
 		return nil, false, nil
 	}

@@ -16,7 +16,7 @@ import (
 
 var upgrader = websocket.Upgrader{}
 
-// FIXME: this sometimes takes very long (10+ seconds) to connect
+// WsChatHandler FIXME: this sometimes takes very long (10+ seconds) to connect
 func WsChatHandler(w http.ResponseWriter, r *http.Request) {
 	s, ok, err := session.SessionFromRequest(r)
 	if err != nil {
@@ -32,7 +32,7 @@ func WsChatHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	channelId, err := twitch.GetChannelId(ctx, s.AccessToken, r.FormValue("channel"))
+	channelID, err := twitch.GetChannelID(ctx, s.AccessToken, r.FormValue("channel"))
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -42,7 +42,7 @@ func WsChatHandler(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	conn := make(chan twitch.Payload)
-	go twitch.Read(s.AccessToken, twitch.NewCondition(channelId, s.UserId), conn, ctx)
+	go twitch.Read(s.AccessToken, twitch.NewCondition(channelID, s.UserID), conn, ctx)
 
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -76,7 +76,7 @@ func WsChatHandler(w http.ResponseWriter, r *http.Request) {
 
 		var templateBuffer bytes.Buffer
 		switch payload.Subscription.Type {
-		case twitch.MESSAGE_TYPE:
+		case twitch.MessageType:
 			component := components.Message(
 				time.Now(),
 				templ.Attributes{"style": "color:" + payload.Event.Color},
@@ -87,7 +87,7 @@ func WsChatHandler(w http.ResponseWriter, r *http.Request) {
 				log.Println(err)
 				return
 			}
-		case twitch.UNBAN_TYPE:
+		case twitch.UnbanType:
 			component := components.UnbanMessage(
 				time.Now(),
 				payload.Event.ModeratorUserLogin,
@@ -99,7 +99,7 @@ func WsChatHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-		case twitch.BAN_TYPE:
+		case twitch.BanType:
 			component := components.BanMessage(
 				payload.Event.BannedAt,
 				payload.Event.IsPermanent,

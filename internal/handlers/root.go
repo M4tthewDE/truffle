@@ -12,7 +12,7 @@ import (
 	"github.com/m4tthewde/truffle/internal/session"
 )
 
-const authUriTemplate = "https://id.twitch.tv/oauth2/authorize?response_type=code&client_id=%s&redirect_uri=%s/login&scope=user:read:chat channel:moderate"
+const authURITemplate = "https://id.twitch.tv/oauth2/authorize?response_type=code&client_id=%s&redirect_uri=%s/login&scope=user:read:chat channel:moderate"
 
 func RootHandler(w http.ResponseWriter, r *http.Request) {
 	_, loggedIn, err := session.SessionFromRequest(r)
@@ -22,8 +22,8 @@ func RootHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	authUri := fmt.Sprintf(authUriTemplate, config.Conf.ClientId, config.Conf.Url)
-	component := components.Root(loggedIn, templ.URL(authUri))
+	authURI := fmt.Sprintf(authURITemplate, config.Conf.ClientID, config.Conf.URL)
+	component := components.Root(loggedIn, templ.URL(authURI))
 
 	err = component.Render(context.Background(), w)
 	if err != nil {
