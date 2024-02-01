@@ -1,0 +1,50 @@
+package components
+
+import "time"
+
+templ UnbanMessage(createdAt time.Time, moderatorUserLogin string, userLogin string) {
+	<div id="messages" hx-swap-oob="beforeend">
+		<div id="msg">
+			<span style="color:gray">
+				{ createdAt.Format(time.TimeOnly) } { moderatorUserLogin } unbanned { userLogin }.
+			</span>
+			<br/>
+		</div>
+	</div>
+}
+
+templ BanMessage(bannedAt time.Time, isPermanent bool, moderatorUserLogin string, userLogin string, reason string, duration time.Duration) {
+	<div id="messages" hx-swap-oob="beforeend">
+		<div id="msg">
+			<span style="color:gray">
+				// FIXME: this is in the wrong timezone
+				{ bannedAt.Format(time.TimeOnly) } { moderatorUserLogin }
+				if isPermanent {
+					permanently banned { userLogin }: "{ reason }".
+				} else {
+					timed out { userLogin } \for { duration.String() }: "{ reason }"
+				}
+			</span>
+			<br/>
+		</div>
+	</div>
+}
+
+templ Message(createdAt time.Time, userAttributes templ.Attributes, chatterUserName string, text string) {
+	<div id="messages" hx-swap-oob="beforeend">
+		<div id="msg">
+			<span style="color:gray">{ createdAt.Format(time.TimeOnly) } </span>
+			<span { userAttributes... }>{ chatterUserName }</span>: { text }
+			<br/>
+		</div>
+	</div>
+}
+
+templ ConnectMessage() {
+	<div id="messages" hx-swap-oob="beforeend">
+		<div id="msg">
+			<span style="color:gray">Connected.</span>
+			<br/>
+		</div>
+	</div>
+}

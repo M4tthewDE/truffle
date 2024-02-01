@@ -5,104 +5,19 @@ import (
 	"context"
 	"log"
 	"net/http"
-	"text/template"
 	"time"
 
+	"github.com/a-h/templ"
 	"github.com/gorilla/websocket"
+	"github.com/m4tthewde/truffle/internal/components"
 	"github.com/m4tthewde/truffle/internal/session"
 	"github.com/m4tthewde/truffle/internal/twitch"
 )
 
-type WsChatHandler struct {
-	msgTemplate     *template.Template
-	unbanTemplate   *template.Template
-	banTemplate     *template.Template
-	connectTemplate *template.Template
-}
-
-func NewWsChatHandler() (*WsChatHandler, error) {
-	msgTemplate, err := template.ParseFiles("resources/message.html")
-	if err != nil {
-		return nil, err
-	}
-
-	unbanTemplate, err := template.ParseFiles("resources/unban_message.html")
-	if err != nil {
-		return nil, err
-	}
-
-	banTemplate, err := template.ParseFiles("resources/ban_message.html")
-	if err != nil {
-		return nil, err
-	}
-
-	connectTemplate, err := template.ParseFiles("resources/connect.html")
-	if err != nil {
-		return nil, err
-	}
-
-	return &WsChatHandler{
-		msgTemplate:     msgTemplate,
-		unbanTemplate:   unbanTemplate,
-		banTemplate:     banTemplate,
-		connectTemplate: connectTemplate,
-	}, nil
-}
-
-type MessageData struct {
-	ChatterUserName string
-	Text            string
-	Color           string
-	CreatedAt       string
-}
-
-func NewMessageData(event twitch.Event) MessageData {
-	return MessageData{
-		ChatterUserName: event.ChatterUserName,
-		Text:            event.ChatMessage.Text,
-		Color:           event.Color,
-		CreatedAt:       time.Now().Format(time.TimeOnly),
-	}
-}
-
-type UnbanMessageData struct {
-	CreatedAt          string
-	ModeratorUserLogin string
-	UserLogin          string
-}
-
-func NewUnbanMessageData(payload twitch.Payload) UnbanMessageData {
-	return UnbanMessageData{
-		CreatedAt:          time.Now().Format(time.TimeOnly),
-		ModeratorUserLogin: payload.Event.ModeratorUserLogin,
-		UserLogin:          payload.Event.UserLogin,
-	}
-}
-
-type BanMessageData struct {
-	ModeratorUserLogin string
-	UserLogin          string
-	IsPermanent        bool
-	BannedAt           string
-	Duration           string
-	Reason             string
-}
-
-func NewBanMessageData(payload twitch.Payload) BanMessageData {
-	return BanMessageData{
-		ModeratorUserLogin: payload.Event.ModeratorUserLogin,
-		UserLogin:          payload.Event.UserLogin,
-		IsPermanent:        payload.Event.IsPermanent,
-		BannedAt:           payload.Event.BannedAt.Format(time.TimeOnly),
-		Duration:           payload.Event.EndsAt.Sub(payload.Event.BannedAt).String(),
-		Reason:             payload.Event.Reason,
-	}
-}
-
 var upgrader = websocket.Upgrader{}
 
 // FIXME: this sometimes takes very long (10+ seconds) to connect
-func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func WsChatHandler(w http.ResponseWriter, r *http.Request) {
 	s, ok, err := session.SessionFromRequest(r)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -137,13 +52,7 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 
 	defer c.Close()
 
-	var connectBuffer bytes.Buffer
-	if handler.connectTemplate.Execute(&connectBuffer, nil); err != nil {
-		log.Println(err)
-		return
-	}
-
-	if c.WriteMessage(websocket.TextMessage, connectBuffer.Bytes()); err != nil {
+	if sendConnectMessage(ctx, c); err != nil {
 		log.Println(err)
 		return
 	}
@@ -168,20 +77,42 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		var templateBuffer bytes.Buffer
 		switch payload.Subscription.Type {
 		case twitch.MESSAGE_TYPE:
-			if handler.msgTemplate.Execute(&templateBuffer, NewMessageData(payload.Event)); err != nil {
+			component := components.Message(
+				time.Now(),
+				templ.Attributes{"style": "color:" + payload.Event.Color},
+				payload.Event.ChatterUserName,
+				payload.Event.ChatMessage.Text,
+			)
+			if component.Render(ctx, &templateBuffer); err != nil {
 				log.Println(err)
 				return
 			}
 		case twitch.UNBAN_TYPE:
-			if handler.unbanTemplate.Execute(&templateBuffer, NewUnbanMessageData(payload)); err != nil {
+			component := components.UnbanMessage(
+				time.Now(),
+				payload.Event.ModeratorUserLogin,
+				payload.Event.UserLogin,
+			)
+
+			if component.Render(ctx, &templateBuffer); err != nil {
 				log.Println(err)
 				return
 			}
+
 		case twitch.BAN_TYPE:
-			if handler.banTemplate.Execute(&templateBuffer, NewBanMessageData(payload)); err != nil {
+			component := components.BanMessage(
+				payload.Event.BannedAt,
+				payload.Event.IsPermanent,
+				payload.Event.ModeratorUserLogin,
+				payload.Event.UserLogin,
+				payload.Event.Reason,
+				payload.Event.EndsAt.Sub(payload.Event.BannedAt),
+			)
+			if component.Render(ctx, &templateBuffer); err != nil {
 				log.Println(err)
 				return
 			}
+
 		}
 
 		if c.WriteMessage(websocket.TextMessage, templateBuffer.Bytes()); err != nil {
@@ -189,4 +120,20 @@ func (handler *WsChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 	}
+}
+
+func sendConnectMessage(ctx context.Context, c *websocket.Conn) error {
+	var connectBuffer bytes.Buffer
+	component := components.ConnectMessage()
+	err := component.Render(ctx, &connectBuffer)
+	if err != nil {
+		return err
+	}
+
+	err = c.WriteMessage(websocket.TextMessage, connectBuffer.Bytes())
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
