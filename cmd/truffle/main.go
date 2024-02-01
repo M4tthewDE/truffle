@@ -29,16 +29,11 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	settingsHandler, err := handlers.NewSettingsHandler()
-	if err != nil {
-		log.Fatalln(err)
-	}
-
 	http.HandleFunc("/", handlers.RootHandler)
 	http.Handle("/chat", chatHandler)
 	http.Handle("/chatroom", chatRoomHandler)
 	http.HandleFunc("/chat/messages", handlers.WsChatHandler)
-	http.Handle("/settings", settingsHandler)
+	http.HandleFunc("/settings", handlers.SettingsHandler)
 	http.HandleFunc("/login", handlers.LoginHandler)
 	http.HandleFunc("/logout", handlers.LogoutHandler)
 

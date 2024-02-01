@@ -1,26 +1,15 @@
 package handlers
 
 import (
+	"context"
+	"log"
 	"net/http"
-	"text/template"
 
+	"github.com/m4tthewde/truffle/internal/components"
 	"github.com/m4tthewde/truffle/internal/session"
 )
 
-type SettingsHandler struct {
-	settingsTemplate *template.Template
-}
-
-func NewSettingsHandler() (*SettingsHandler, error) {
-	settingsTemplate, err := template.ParseFiles("resources/settings.html")
-	if err != nil {
-		return nil, err
-	}
-
-	return &SettingsHandler{settingsTemplate: settingsTemplate}, nil
-}
-
-func (handler *SettingsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func SettingsHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -37,8 +26,11 @@ func (handler *SettingsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	err = handler.settingsTemplate.Execute(w, nil)
+	component := components.Settings()
+
+	err = component.Render(context.Background(), w)
 	if err != nil {
+		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 }

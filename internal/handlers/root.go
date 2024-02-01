@@ -24,10 +24,10 @@ func RootHandler(w http.ResponseWriter, r *http.Request) {
 
 	authUri := fmt.Sprintf(authUriTemplate, config.Conf.ClientId, config.Conf.Url)
 	component := components.Root(loggedIn, templ.URL(authUri))
+
 	err = component.Render(context.Background(), w)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
-		return
 	}
 }

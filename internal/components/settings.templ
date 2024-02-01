@@ -1,0 +1,14 @@
+package components
+
+templ Settings() {
+	<script>
+		htmx.on("htmx:afterRequest", function (evt) {
+			if (evt.detail.target.attributes["id"].nodeValue === "logout-btn") {
+				document.cookie = "sessionid=;Max-Age=0;path=/;SameSite=Strict"
+				window.location.href = "/"
+			}
+		});
+	</script>
+	<h2>Settings</h2>
+	<button id="logout-btn" hx-post="/logout" hx-trigger="click">Logout</button>
+}
